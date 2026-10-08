@@ -1,0 +1,2 @@
+Fontes (opcional): para hospedar localmente Cormorant Garamond e Jost (SIL Open Font License),
+coloque os arquivos .woff2 aqui, declare com @font-face em css/style.css e remova o <link> do Google Fonts das páginas.

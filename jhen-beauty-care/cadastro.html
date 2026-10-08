@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Criar conta | JHEN beauty care</title>
+  <meta name="description" content="Crie sua conta para agendar online e acompanhar seus atendimentos.">
+  <meta name="theme-color" content="#A0585C">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:site_name" content="JHEN beauty care">
+  <meta property="og:title" content="Criar conta | JHEN beauty care">
+  <meta property="og:description" content="Crie sua conta para agendar online e acompanhar seus atendimentos.">
+  <meta property="og:image" content="assets/images/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/logo/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/logo/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/logo/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap">
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm" crossorigin>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <script type="module" src="js/auth-pages.js"></script>
+</head>
+<body data-page="cadastro">
+  <a class="skip-link" href="#main">Pular para o conteúdo</a>
+  <div class="auth">
+    <div class="auth__visual auth__visual--pattern" role="img" aria-label="Identidade visual JHEN beauty care">
+      <div class="auth__visual-note"><p>Seu horário, do seu jeito, a qualquer hora.</p></div>
+    </div>
+    <main class="auth__panel" id="main" tabindex="-1">
+      <div class="auth__box">
+        <a class="auth__logo" href="index.html"><img src="assets/logo/logo-jhen-vinho.png" alt="JHEN beauty care — voltar ao site" width="122" height="52"></a>
+
+        <h1>Criar conta</h1>
+        <p class="muted">Leva menos de um minuto. Usamos seu telefone só para avisos do agendamento.</p>
+        <div id="form-alert" hidden></div>
+        <form class="form" id="signup-form" novalidate style="margin-top:var(--space-5)">
+          <div class="field"><label for="full_name">Nome completo</label><input class="input" id="full_name" name="full_name" autocomplete="name" required maxlength="120"></div>
+          <div class="field"><label for="email">E-mail</label><input class="input" type="email" id="email" name="email" autocomplete="email" inputmode="email" required></div>
+          <div class="field"><label for="phone">Celular com DDD</label><input class="input" type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" placeholder="(11) 91234-5678" required></div>
+          <div class="field"><label for="password">Senha</label>
+            <div class="input-group"><input class="input" type="password" id="password" name="password" autocomplete="new-password" required minlength="8" aria-describedby="password-strength">
+            <button class="input-group__btn" type="button" data-toggle-password aria-label="Mostrar senha"></button></div></div>
+          <div class="password-meter" aria-hidden="true"><span></span></div><p class="hint" id="password-strength" aria-live="polite"></p>
+          <div class="field"><label for="password_confirm">Confirme a senha</label>
+            <div class="input-group"><input class="input" type="password" id="password_confirm" name="password_confirm" autocomplete="new-password" required >
+            <button class="input-group__btn" type="button" data-toggle-password aria-label="Mostrar senha"></button></div></div>
+          <div class="field"><label class="checkbox"><input type="checkbox" name="terms" required><span>Concordo com o uso dos meus dados para gerenciar meus agendamentos, conforme a LGPD.</span></label></div>
+          <button class="btn btn--block btn--lg" type="submit">Criar conta</button>
+        </form>
+        <p class="auth__alt">Já tem conta? <a href="login.html" id="login-link">Entrar</a></p>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

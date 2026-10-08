@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Agendar horário | JHEN beauty care</title>
+  <meta name="description" content="Agende seu design de sobrancelhas online: escolha o procedimento, a profissional, o dia e o horário livre.">
+  <meta name="theme-color" content="#A0585C">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:site_name" content="JHEN beauty care">
+  <meta property="og:title" content="Agendar horário | JHEN beauty care">
+  <meta property="og:description" content="Agende seu design de sobrancelhas online: escolha o procedimento, a profissional, o dia e o horário livre.">
+  <meta property="og:image" content="assets/images/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/logo/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/logo/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/logo/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap">
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm" crossorigin>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <script type="module" src="js/agendamento.js"></script>
+</head>
+<body data-page="agendamento">
+  <a class="skip-link" href="#main">Pular para o conteúdo</a>
+  <div data-component="header"></div>
+  <main id="main" tabindex="-1">
+
+    <div class="booking">
+      <div class="container">
+        <div class="section-head" style="margin-bottom:var(--space-5)">
+          <span class="brand-tag">agendamento online</span>
+          <h1>Agende seu horário</h1>
+        </div>
+        <ol class="steps" id="steps" aria-label="Etapas do agendamento"></ol>
+        <div class="booking__layout">
+          <div id="step-container" aria-live="polite"></div>
+          <aside class="summary panel" id="summary" aria-label="Resumo do agendamento" hidden></aside>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div data-component="footer"></div>
+  <noscript><div class="container"><p class="alert alert--warning">Ative o JavaScript para agendar online.</p></div></noscript>
+</body>
+</html>

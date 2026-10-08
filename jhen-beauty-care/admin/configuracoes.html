@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Configurações | JHEN beauty care</title>
+  <meta name="description" content="Configurações — área restrita JHEN beauty care.">
+  <meta name="theme-color" content="#A0585C">
+  <meta name="robots" content="noindex, nofollow">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:site_name" content="JHEN beauty care">
+  <meta property="og:title" content="Configurações | JHEN beauty care">
+  <meta property="og:description" content="Configurações — área restrita JHEN beauty care.">
+  <meta property="og:image" content="../assets/images/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/logo/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/logo/favicon-32.png">
+  <link rel="apple-touch-icon" href="../assets/logo/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap">
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm" crossorigin>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <link rel="stylesheet" href="../css/responsive.css">
+  <script type="module" src="../js/admin/configuracoes.js"></script>
+</head>
+<body data-page="configuracoes">
+  <a class="skip-link" href="#content">Pular para o conteúdo</a>
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="Navegação da área"></aside>
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn topbar__menu" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <h1 class="topbar__title">Configurações</h1>
+        <div class="topbar__actions"></div>
+      </header>
+      <main class="content" id="content" tabindex="-1">
+
+        <div id="settings-root">
+          <div class="tabs" role="tablist" id="settings-tabs" aria-label="Configurações">
+            <button role="tab" data-tab="horarios" aria-controls="tp-horarios" aria-selected="true">Funcionamento</button>
+            <button role="tab" data-tab="datas" aria-controls="tp-datas" aria-selected="false" tabindex="-1">Feriados e datas especiais</button>
+            <button role="tab" data-tab="bloqueios" aria-controls="tp-bloqueios" aria-selected="false" tabindex="-1">Folgas e bloqueios</button>
+            <button role="tab" data-tab="politicas" aria-controls="tp-politicas" aria-selected="false" tabindex="-1">Políticas</button>
+            <button role="tab" data-tab="pagamentos" aria-controls="tp-pagamentos" aria-selected="false" tabindex="-1">Pagamentos</button>
+            <button role="tab" data-tab="contato" aria-controls="tp-contato" aria-selected="false" tabindex="-1">Contato e avisos</button>
+            <button role="tab" data-tab="site" aria-controls="tp-site" aria-selected="false" tabindex="-1">Galeria e depoimentos</button>
+          </div>
+          <section class="tab-panel" id="tp-horarios" role="tabpanel"></section>
+          <section class="tab-panel" id="tp-datas" role="tabpanel" hidden></section>
+          <section class="tab-panel" id="tp-bloqueios" role="tabpanel" hidden></section>
+          <section class="tab-panel" id="tp-politicas" role="tabpanel" hidden></section>
+          <section class="tab-panel" id="tp-pagamentos" role="tabpanel" hidden></section>
+          <section class="tab-panel" id="tp-contato" role="tabpanel" hidden></section>
+          <section class="tab-panel" id="tp-site" role="tabpanel" hidden></section>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

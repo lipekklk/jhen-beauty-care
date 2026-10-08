@@ -1,0 +1,132 @@
+/* =============================================================================
+   JHEN beauty care — responsive.css
+   Mobile-first nas decisões de layout: a maioria dos agendamentos vem do celular.
+   ============================================================================= */
+
+/* ---------- até 1100px ---------- */
+@media (max-width: 1100px) {
+  .footer__grid { grid-template-columns: 1fr 1fr; }
+  .benefits { grid-template-columns: repeat(2, 1fr); }
+  .gallery { grid-template-columns: repeat(3, 1fr); }
+  .booking__layout { grid-template-columns: 1fr; }
+  .summary { position: static; order: -1; }
+  .datetime-picker { grid-template-columns: 1fr; }
+  .grid-3-1 { grid-template-columns: 1fr; }
+}
+
+/* ---------- até 960px: navegação mobile ---------- */
+@media (max-width: 960px) {
+  :root { --header-h: 68px; }
+  .nav-toggle { display: grid; }
+  .nav {
+    position: fixed; inset: var(--header-h) 0 0 0; z-index: 49;
+    flex-direction: column; align-items: stretch; gap: var(--space-4);
+    padding: var(--space-6) var(--space-5); background: var(--color-background);
+    /* fechado: invisível e levemente acima — sem translateX, que criaria rolagem horizontal */
+    opacity: 0; transform: translateY(-8px); visibility: hidden; pointer-events: none;
+    transition: opacity .25s var(--ease), transform .25s var(--ease), visibility .25s;
+    overflow-y: auto;
+  }
+  .nav.is-open { opacity: 1; transform: none; visibility: visible; pointer-events: auto; }
+  .nav__list { flex-direction: column; align-items: stretch; gap: var(--space-1); }
+  .nav__link { min-height: 56px; font-size: var(--fs-xl); font-family: var(--font-display); padding: 0 var(--space-4); border-radius: var(--radius-md); }
+  .nav__actions { margin: var(--space-4) 0 0; flex-direction: column; align-items: stretch; }
+  .nav__actions .btn { width: 100%; min-height: 54px; }
+  body.nav-open { overflow: hidden; }
+
+  .hero { padding-block: var(--space-6) var(--space-8); }
+  .hero__grid { grid-template-columns: 1fr; gap: var(--space-7); }
+  .hero__visual { width: min(64%, 260px); } /* texto e botão de agendar primeiro no celular */
+  .hero__dragonfly { width: 84px; right: -18px; }
+  .about__grid { grid-template-columns: 1fr; gap: var(--space-7); }
+  .about__visual { max-width: 300px; margin-inline: auto; }
+  .contact-grid { grid-template-columns: 1fr; }
+  .testimonials { grid-template-columns: 1fr; }
+  .auth { grid-template-columns: 1fr; }
+  .auth__visual { display: none; }
+  .section { padding-block: var(--space-8); }
+
+  /* Dashboard: sidebar vira gaveta */
+  .app { grid-template-columns: 1fr; }
+  .sidebar {
+    position: fixed; z-index: 120; left: 0; top: 0; bottom: 0; width: min(86vw, 300px);
+    transform: translateX(-100%); transition: transform .3s var(--ease);
+  }
+  .sidebar.is-open { transform: none; box-shadow: var(--shadow-lg); }
+  .sidebar-backdrop { position: fixed; inset: 0; z-index: 110; background: rgba(61, 38, 39, .4); }
+  .sidebar-backdrop.is-open { display: block; }
+  .topbar { padding: var(--space-3) var(--space-4); }
+  .topbar .topbar__menu { display: inline-grid; }
+  .topbar__title { font-size: var(--fs-xl); }
+  .content { padding: var(--space-5) var(--space-4); }
+  .grid-2 { grid-template-columns: 1fr; }
+  .hours-head { display: none; }
+  .hours-row { grid-template-columns: 1fr auto; }
+  .hours-row__fields { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+}
+
+@media (min-width: 961px) {
+  .hours-row__fields { display: contents; }
+}
+
+/* ---------- até 640px: smartphones ---------- */
+@media (max-width: 640px) {
+  :root { --fs-xl: 1.25rem; }
+  .container { width: min(100% - 2rem, var(--container)); }
+  .section-head { margin-bottom: var(--space-6); }
+  .hero__actions .btn { flex: 1 1 100%; }
+  .menu-item { grid-template-columns: 76px 1fr; gap: var(--space-4); align-items: start; }
+  .menu-item__img { width: 76px; height: 96px; }
+  .menu-item__cta { grid-column: 1 / -1; }
+  .menu-item__cta .btn { width: 100%; }
+  .menu-item__head { flex-wrap: wrap; }
+  .menu-item__leader { display: none; }
+  .menu-item__price { margin-left: auto; }
+  .benefits { grid-template-columns: 1fr; gap: var(--space-5); }
+  .gallery { grid-template-columns: repeat(2, 1fr); gap: var(--space-2); }
+  .gallery-empty { grid-template-columns: 1fr; text-align: center; }
+  .gallery-empty img { margin-inline: auto; }
+  .footer__grid { grid-template-columns: 1fr; }
+  .panel { padding: var(--space-5) var(--space-4); border-radius: var(--radius-md); }
+  .auth__panel { padding: var(--space-6) var(--space-4); justify-content: flex-start; }
+  .choice { grid-template-columns: auto 1fr; padding: var(--space-4); }
+  .choice__price { grid-column: 2; font-size: var(--fs-lg); }
+  .pay-methods { grid-template-columns: 1fr; }
+  .pay-method { flex-direction: row; align-items: center; }
+  .pix-box { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .step-actions { flex-direction: column-reverse; }
+  .step-actions .btn { width: 100%; }
+  .calendar { padding: var(--space-4) var(--space-3); }
+  .calendar__day { min-height: 42px; }
+  .slots { grid-template-columns: repeat(3, 1fr); }
+  .modal { padding: 0; align-items: end; }
+  .modal__dialog, .modal__dialog--lg { width: 100%; max-height: 92vh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .modal__head { padding: var(--space-5) var(--space-4) 0; }
+  .modal__body { padding: var(--space-4); }
+  .modal__foot { padding: 0 var(--space-4) var(--space-5); }
+  .modal__foot .btn { flex: 1 1 auto; }
+  .toast-region { left: var(--space-3); right: var(--space-3); top: auto; bottom: var(--space-3); width: auto; }
+
+  .next-appt { grid-template-columns: 1fr; gap: var(--space-4); }
+  .date-capsule { width: 100%; border-radius: var(--radius-md); padding: var(--space-3); display: flex; align-items: baseline; justify-content: center; gap: var(--space-2); }
+  .date-capsule__day { font-size: 2rem; margin: 0; }
+  .appt { grid-template-columns: 64px 1fr; }
+  .appt__side { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+  .stats { grid-template-columns: repeat(2, 1fr); gap: var(--space-3); }
+  .stat { padding: var(--space-4); }
+  .stat__value { font-size: 1.7rem; }
+  .toolbar > * { flex: 1 1 100%; }
+  .toolbar > .range-nav { justify-content: space-between; }
+  .hide-sm { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .topbar__actions .btn { min-width: 44px; padding-inline: .7rem; }
+  .toolbar .segmented { justify-content: center; }
+  .wa-float { width: 54px; height: 54px; right: 14px; bottom: 14px; }
+  /* tabela vira lista de cartões */
+  .table--stack thead { display: none; }
+  .table--stack, .table--stack tbody, .table--stack tr, .table--stack td { display: block; width: 100%; }
+  .table--stack tr { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); }
+  .table--stack td { border: 0; padding: var(--space-1) 0; display: flex; justify-content: space-between; gap: var(--space-3); text-align: right; }
+  .table--stack td::before { content: attr(data-label); color: var(--color-text-muted); text-align: left; font-size: var(--fs-xs); }
+  .table--stack td.actions-cell { justify-content: flex-end; }
+  .table--stack td.actions-cell::before { display: none; }
+}

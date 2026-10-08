@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Meus dados | JHEN beauty care</title>
+  <meta name="description" content="Meus dados — área restrita JHEN beauty care.">
+  <meta name="theme-color" content="#A0585C">
+  <meta name="robots" content="noindex, nofollow">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:site_name" content="JHEN beauty care">
+  <meta property="og:title" content="Meus dados | JHEN beauty care">
+  <meta property="og:description" content="Meus dados — área restrita JHEN beauty care.">
+  <meta property="og:image" content="../assets/images/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/logo/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/logo/favicon-32.png">
+  <link rel="apple-touch-icon" href="../assets/logo/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap">
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm" crossorigin>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <link rel="stylesheet" href="../css/responsive.css">
+  <script type="module" src="../js/cliente.js"></script>
+</head>
+<body data-page="perfil">
+  <a class="skip-link" href="#content">Pular para o conteúdo</a>
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="Navegação da área"></aside>
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn topbar__menu" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <h1 class="topbar__title">Meus dados</h1>
+        <div class="topbar__actions"></div>
+      </header>
+      <main class="content" id="content" tabindex="-1">
+
+        <section class="panel" aria-labelledby="pf-title">
+          <div class="panel__head"><h2 id="pf-title">Dados pessoais</h2></div>
+          <div style="display:flex;gap:var(--space-4);align-items:center;margin-bottom:var(--space-5);flex-wrap:wrap">
+            <span class="avatar avatar--lg" id="avatar-preview"></span>
+            <div class="actions">
+              <label class="btn btn--outline btn--sm">Trocar foto<input type="file" id="avatar-input" accept="image/jpeg,image/png,image/webp" class="sr-only"></label>
+              <button class="btn btn--ghost btn--sm" type="button" id="avatar-remove">Remover foto</button>
+            </div>
+          </div>
+          <form class="form" id="profile-form" novalidate>
+            <div class="form-row">
+              <div class="field"><label for="full_name">Nome completo</label><input class="input" id="full_name" name="full_name" autocomplete="name" maxlength="120" required></div>
+              <div class="field"><label for="phone">Celular</label><input class="input" type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel"></div>
+              <div class="field"><label for="birth_date">Data de nascimento <span class="muted">(opcional)</span></label><input class="input" type="date" id="birth_date" name="birth_date" autocomplete="bday"></div>
+            </div>
+            <div><button class="btn" type="submit">Salvar dados</button></div>
+          </form>
+        </section>
+        <div class="grid-2">
+          <section class="panel" aria-labelledby="em-title">
+            <h2 id="em-title" style="font-size:var(--fs-xl)">E-mail de acesso</h2>
+            <p class="muted">Atual: <strong id="current-email"></strong>. Para trocar, enviamos um link de confirmação para o novo endereço.</p>
+            <form class="form" id="email-form" novalidate>
+              <div class="field"><label for="new_email">Novo e-mail</label><input class="input" type="email" id="new_email" name="new_email" autocomplete="email" required></div>
+              <div><button class="btn btn--outline" type="submit">Enviar confirmação</button></div>
+            </form>
+          </section>
+          <section class="panel" aria-labelledby="pw-title">
+            <h2 id="pw-title" style="font-size:var(--fs-xl)">Senha</h2>
+            <form class="form" id="password-form" novalidate>
+              <div class="field"><label for="current_password">Senha atual</label>
+            <div class="input-group"><input class="input" type="password" id="current_password" name="current_password" autocomplete="current-password" required >
+            <button class="input-group__btn" type="button" data-toggle-password aria-label="Mostrar senha"></button></div></div>
+              <div class="field"><label for="new_password">Nova senha</label>
+            <div class="input-group"><input class="input" type="password" id="new_password" name="new_password" autocomplete="new-password" required minlength="8">
+            <button class="input-group__btn" type="button" data-toggle-password aria-label="Mostrar senha"></button></div></div>
+              <div class="field"><label for="confirm_password">Confirme a nova senha</label>
+            <div class="input-group"><input class="input" type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required >
+            <button class="input-group__btn" type="button" data-toggle-password aria-label="Mostrar senha"></button></div></div>
+              <div><button class="btn btn--outline" type="submit">Alterar senha</button></div>
+            </form>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

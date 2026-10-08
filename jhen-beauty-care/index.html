@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>JHEN beauty care | Design de sobrancelhas com agendamento online</title>
+  <meta name="description" content="Design de sobrancelhas, henna e brow lamination com horário marcado. Veja preços, escolha o horário livre e agende online em poucos minutos.">
+  <meta name="theme-color" content="#A0585C">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:site_name" content="JHEN beauty care">
+  <meta property="og:title" content="JHEN beauty care | Design de sobrancelhas com agendamento online">
+  <meta property="og:description" content="Design de sobrancelhas, henna e brow lamination com horário marcado. Veja preços, escolha o horário livre e agende online em poucos minutos.">
+  <meta property="og:image" content="assets/images/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/logo/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/logo/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/logo/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap">
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm" crossorigin>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <script type="module" src="js/home.js"></script>
+</head>
+<body data-page="home">
+  <a class="skip-link" href="#main">Pular para o conteúdo</a>
+  <div data-component="header"></div>
+  <main id="main" tabindex="-1">
+
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero__grid">
+        <div>
+          <span class="brand-tag">design de sobrancelhas</span>
+          <h1 class="hero__title" id="hero-title">Sobrancelhas desenhadas para o seu rosto.</h1>
+          <p class="hero__lead">Design, henna e brow lamination com atendimento individual. Escolha o procedimento, veja os horários livres e confirme em poucos minutos.</p>
+          <div class="hero__actions">
+            <a class="btn btn--lg" href="agendamento.html">Agendar agora</a>
+            <a class="btn btn--lg btn--outline" href="procedimentos.html">Ver procedimentos e preços</a>
+          </div>
+          <p class="hero__note"><img src="assets/logo/libelula-vinho.png" alt="" width="28" height="22">Agenda online aberta 24 horas, com confirmação na hora.</p>
+        </div>
+        <div class="hero__visual">
+          <div class="capsule-frame">
+            <picture>
+              <source srcset="assets/images/marca/jhen-beauty-care-640.webp 640w, assets/images/marca/jhen-beauty-care.webp 1280w" sizes="(max-width: 960px) 78vw, 420px" type="image/webp">
+              <img src="assets/images/marca/jhen-beauty-care.jpeg" alt="Logotipo JHEN beauty care em creme sobre degradê rosé" width="420" height="600" fetchpriority="high" style="object-position:50% 50%">
+            </picture>
+          </div>
+          <img class="hero__dragonfly" src="assets/logo/libelula-vinho.png" alt="" width="110" height="86">
+        </div>
+      </div>
+    </section>
+
+    <section class="section about" id="sobre" aria-labelledby="about-title">
+      <div class="container about__grid">
+        <div class="about__visual">
+          <div class="arch-frame">
+            <img src="assets/images/marca/jhen-logo-640.webp" alt="Estampa com o nome JHEN repetido em vinho sobre fundo rosado" width="380" height="475" loading="lazy" style="object-position:30% 50%">
+          </div>
+          <img class="monogram" src="assets/logo/monograma-j-vinho.png" alt="" width="96" height="138" loading="lazy">
+        </div>
+        <div class="about__text">
+          <span class="brand-tag">quem cuida de você</span>
+          <h2 id="about-title">Olá, eu sou a Jhenyfer.</h2>
+          <p>Criei a JHEN beauty care para oferecer um atendimento calmo e sem pressa, em que cada sobrancelha é pensada a partir dos traços de quem senta na minha cadeira.</p>
+          <p>Antes de qualquer procedimento conversamos sobre o que você espera e fazemos o mapeamento do rosto. O resultado é um olhar mais definido, que continua parecendo você.</p>
+          <p class="signature">Jhenyfer</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="procedimentos" aria-labelledby="services-title">
+      <div class="container">
+        <div class="section-head">
+          <span class="brand-tag">procedimentos</span>
+          <h2 id="services-title">Escolha o seu cuidado</h2>
+          <p>Preços e duração de cada procedimento. Você agenda direto pelo site.</p>
+        </div>
+        <div id="services" aria-live="polite"></div>
+        <p style="margin-top:var(--space-5)" id="services-more" hidden><a class="btn btn--ghost" href="procedimentos.html">Ver todos os procedimentos</a></p>
+      </div>
+    </section>
+
+    <section class="section section--tight" aria-labelledby="benefits-title" style="background:var(--color-surface)">
+      <div class="container">
+        <div class="section-head"><span class="brand-tag">por que agendar aqui</span><h2 id="benefits-title">Do primeiro clique ao resultado</h2></div>
+        <div class="benefits">
+          <div class="benefit"><h3>Agenda aberta 24 horas</h3><p>Veja os horários livres e reserve quando for melhor para você, sem esperar resposta.</p></div>
+          <div class="benefit"><h3>Design feito para você</h3><p>Mapeamento facial antes de cada design, respeitando o formato natural dos fios.</p></div>
+          <div class="benefit"><h3>Pague como preferir</h3><p>PIX, cartão ou no estúdio, conforme o procedimento. Pagamento seguro, sem guardar dados de cartão.</p></div>
+          <div class="benefit"><h3>Lembretes do seu horário</h3><p>Confirmação na hora e lembrete antes do atendimento. Remarque pela sua área quando precisar.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="gallery-title">
+      <div class="container">
+        <div class="section-head"><span class="brand-tag">resultados</span><h2 id="gallery-title">Galeria</h2></div>
+        <div id="gallery"></div>
+      </div>
+    </section>
+
+    <section class="section section--tight" aria-labelledby="reviews-title" style="background:var(--color-surface-alt)">
+      <div class="container">
+        <div class="section-head"><span class="brand-tag">quem já veio</span><h2 id="reviews-title">O que dizem as clientes</h2></div>
+        <div id="reviews"></div>
+      </div>
+    </section>
+
+    <section class="section cta-band" aria-labelledby="cta-title">
+      <div class="container">
+        <span class="brand-tag">agendamento online</span>
+        <h2 id="cta-title">Seu próximo horário está a poucos toques.</h2>
+        <p>Escolha o procedimento, a data e pronto. A confirmação chega na hora.</p>
+        <a class="btn btn--cream btn--lg" href="agendamento.html">Agendar agora</a>
+      </div>
+    </section>
+
+    <section class="section" id="contato" aria-labelledby="contact-title">
+      <div class="container contact-grid">
+        <div>
+          <span class="brand-tag">contato</span>
+          <h2 id="contact-title">Fale com a gente</h2>
+          <div id="contact-list"></div>
+        </div>
+        <div class="panel">
+          <h3>Horário de funcionamento</h3>
+          <div id="hours"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <div data-component="footer"></div>
+  <noscript><div class="container"><p class="alert alert--warning">Ative o JavaScript para agendar online.</p></div></noscript>
+</body>
+</html>

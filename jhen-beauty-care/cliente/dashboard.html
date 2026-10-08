@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Minha área | JHEN beauty care</title>
+  <meta name="description" content="Minha área — área restrita JHEN beauty care.">
+  <meta name="theme-color" content="#A0585C">
+  <meta name="robots" content="noindex, nofollow">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:site_name" content="JHEN beauty care">
+  <meta property="og:title" content="Minha área | JHEN beauty care">
+  <meta property="og:description" content="Minha área — área restrita JHEN beauty care.">
+  <meta property="og:image" content="../assets/images/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/logo/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/logo/favicon-32.png">
+  <link rel="apple-touch-icon" href="../assets/logo/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap">
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm" crossorigin>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <link rel="stylesheet" href="../css/responsive.css">
+  <script type="module" src="../js/cliente.js"></script>
+</head>
+<body data-page="dashboard">
+  <a class="skip-link" href="#content">Pular para o conteúdo</a>
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="Navegação da área"></aside>
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn topbar__menu" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <h1 class="topbar__title">Minha área</h1>
+        <div class="topbar__actions"><a class="btn btn--sm" href="../agendamento.html"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="hide-sm">Novo agendamento</span></a></div>
+      </header>
+      <main class="content" id="content" tabindex="-1">
+
+        <p class="page-intro" id="greeting">Olá!</p>
+        <section class="panel" id="next-appt" aria-live="polite"></section>
+        <div class="stats">
+          <div class="stat"><span class="stat__label">Próximos horários</span><span class="stat__value" id="stat-upcoming">–</span></div>
+          <div class="stat"><span class="stat__label">Atendimentos realizados</span><span class="stat__value" id="stat-done">–</span></div>
+          <div class="stat"><span class="stat__label">Último atendimento</span><span class="stat__value" id="stat-last" style="font-size:1.5rem">–</span></div>
+        </div>
+        <div class="grid-3-1">
+          <section class="panel"><div class="panel__head"><h2>Histórico recente</h2><a href="agendamentos.html">Ver tudo</a></div><div id="recent-history"></div></section>
+          <section class="panel"><div class="panel__head"><h2>Notificações</h2></div><div id="notifications"></div></section>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

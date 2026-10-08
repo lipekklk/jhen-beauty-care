@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Painel | JHEN beauty care</title>
+  <meta name="description" content="Painel — área restrita JHEN beauty care.">
+  <meta name="theme-color" content="#A0585C">
+  <meta name="robots" content="noindex, nofollow">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:site_name" content="JHEN beauty care">
+  <meta property="og:title" content="Painel | JHEN beauty care">
+  <meta property="og:description" content="Painel — área restrita JHEN beauty care.">
+  <meta property="og:image" content="../assets/images/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../assets/logo/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/logo/favicon-32.png">
+  <link rel="apple-touch-icon" href="../assets/logo/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap">
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm" crossorigin>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <link rel="stylesheet" href="../css/responsive.css">
+  <script type="module" src="../js/admin/dashboard.js"></script>
+</head>
+<body data-page="dashboard">
+  <a class="skip-link" href="#content">Pular para o conteúdo</a>
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="Navegação da área"></aside>
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn topbar__menu" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <h1 class="topbar__title">Painel</h1>
+        <div class="topbar__actions"><a class="btn btn--sm" href="agendamentos.html?novo=1"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="hide-sm">Novo agendamento</span></a></div>
+      </header>
+      <main class="content" id="content" tabindex="-1">
+
+        <div class="toolbar">
+          <div class="segmented" id="period" role="group" aria-label="Período dos indicadores">
+            <button type="button" data-period="7" aria-pressed="false">7 dias</button>
+            <button type="button" data-period="30" aria-pressed="true">30 dias</button>
+            <button type="button" data-period="month" aria-pressed="false">Este mês</button>
+            <button type="button" data-period="90" aria-pressed="false">90 dias</button>
+          </div>
+        </div>
+        <div class="alert alert--warning" id="refund-alert" hidden><p><strong data-count></strong> estorno(s) pendente(s). <a href="pagamentos.html">Ver pagamentos</a></p></div>
+        <div class="stats" id="stats" aria-live="polite">
+          <div class="stat"><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--title"></div></div>
+          <div class="stat"><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--title"></div></div>
+          <div class="stat"><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--title"></div></div>
+          <div class="stat"><div class="skeleton skeleton--text"></div><div class="skeleton skeleton--title"></div></div>
+        </div>
+        <div class="grid-3-1">
+          <section class="panel"><div class="panel__head"><h2>Faturamento por dia</h2></div><div id="chart-revenue"></div></section>
+          <section class="panel"><div class="panel__head"><h2>Por status</h2></div><ul id="status-breakdown" style="list-style:none;margin:0;padding:0"></ul></section>
+        </div>
+        <div class="grid-2">
+          <section class="panel"><div class="panel__head"><h2>Procedimentos mais agendados</h2></div><div id="chart-services"></div></section>
+          <section class="panel"><div class="panel__head"><h2>Avisos</h2></div><div id="admin-notifications"></div></section>
+        </div>
+        <section class="panel"><div class="panel__head"><h2>Atendimentos de hoje</h2><a class="btn btn--ghost btn--sm" href="agendamentos.html">Ver agendamentos</a></div><div id="today-agenda"></div></section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

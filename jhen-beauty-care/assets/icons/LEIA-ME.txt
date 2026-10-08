@@ -1,0 +1,2 @@
+Ícones: o projeto usa SVG inline (js/icons.js) para não depender de arquivos extras.
+Coloque aqui ícones próprios da marca, se houver.
