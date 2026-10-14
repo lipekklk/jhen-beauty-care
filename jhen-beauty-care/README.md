@@ -199,6 +199,7 @@ Em *Authentication → Emails (Templates)*, traduza os modelos para português. 
 | "Seu e-mail ainda não foi confirmado" | A conta existe, mas o link não foi clicado | Botão **Reenviar e-mail de confirmação** na tela de login (limite: 1 envio por minuto por e-mail). |
 | Clicar no link do e-mail abre uma página que não existe | A URL do site não está em **Redirect URLs**, então o Supabase manda para a **Site URL** (padrão `http://localhost:3000`) | Ver os passos abaixo. A conta é confirmada mesmo assim; basta entrar pelo site. |
 | Login aceito, mas "não conseguimos carregar seu cadastro" | Conta sem linha em `profiles` (perfil apagado manualmente) | O site recria sozinho via `ensure_profile()`. Para corrigir todas de uma vez, reexecute o `schema.sql` (tem backfill). |
+| Troca de e-mail: o link abre `localhost` e o e-mail não muda | 1) A URL do site não está em **Redirect URLs**, então o Supabase usa a **Site URL** padrão (`http://localhost:3000`). 2) Com "Secure email change" ligado, a troca exige **dois cliques**: no link enviado ao e-mail atual **e** no enviado ao novo | Configure Site URL e Redirect URLs (abaixo) e confirme nos dois e-mails. A página *Meus dados* mostra a troca pendente até as duas confirmações. |
 | E-mail não chega | Limite do servidor de e-mail padrão do Supabase | Configure SMTP próprio (abaixo) e confira a caixa de spam. Os envios aparecem em *Authentication → Logs*. |
 
 **Configurações obrigatórias no painel** (*Authentication → URL Configuration*):

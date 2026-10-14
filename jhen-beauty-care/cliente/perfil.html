@@ -62,6 +62,7 @@
           <section class="panel" aria-labelledby="em-title">
             <h2 id="em-title" style="font-size:var(--fs-xl)">E-mail de acesso</h2>
             <p class="muted">Atual: <strong id="current-email"></strong>. Para trocar, enviamos um link de confirmação para o novo endereço.</p>
+            <div id="email-pending" role="status" hidden></div>
             <form class="form" id="email-form" novalidate>
               <div class="field"><label for="new_email">Novo e-mail</label><input class="input" type="email" id="new_email" name="new_email" autocomplete="email" required></div>
               <div><button class="btn btn--outline" type="submit">Enviar confirmação</button></div>

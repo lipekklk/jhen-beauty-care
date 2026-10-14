@@ -239,7 +239,7 @@ async function initPurchases() {
 }
 
 /* ------------------------------------------------------------------ perfil */
-function initProfile() {
+async function initProfile() {
   const form = document.getElementById('profile-form');
   const avatar = document.getElementById('avatar-preview');
   const paintAvatar = (src) => {
@@ -306,10 +306,32 @@ function initProfile() {
       );
       if (error) { toast({ type: 'error', message: errorMessage(error) }); return; }
       emailForm.reset();
-      toast({ type: 'success', title: 'Confirme pelo e-mail', message: 'Enviamos um link de confirmação. A troca só acontece depois que você confirmar.', timeout: 9000 });
+      toast({ type: 'success', title: 'Confirme nos dois e-mails', message: 'Enviamos um link para o seu e-mail atual e outro para o novo. A troca só acontece depois que você clicar nos dois.', timeout: 12000 });
+      await showEmailStatus();
     }, 'Enviando…');
   });
-  if (getParam('email') === 'confirmado') toast({ type: 'success', message: 'E-mail atualizado.' });
+
+  // situação real da troca (consultada no servidor de autenticação, não na URL)
+  async function showEmailStatus() {
+    const box = document.getElementById('email-pending');
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
+    if (!user) return null;
+    document.getElementById('current-email').textContent = user.email;
+    if (user.new_email) {
+      box.className = 'alert alert--warning';
+      box.innerHTML = `${icon('mail')}<p>Troca para <strong>${esc(user.new_email)}</strong> aguardando confirmação. Abra o link enviado para <strong>${esc(user.email)}</strong> e o enviado para <strong>${esc(user.new_email)}</strong>. Se não encontrar, confira o spam ou peça de novo.</p>`;
+      box.hidden = false;
+    } else {
+      box.hidden = true;
+    }
+    return user;
+  }
+  const emailUser = await showEmailStatus();
+  if (getParam('email') === 'confirmado' && emailUser) {
+    if (emailUser.new_email) toast({ type: 'info', title: 'Falta uma confirmação', message: 'Recebemos a primeira confirmação. Agora abra o link enviado para o outro e-mail.', timeout: 12000 });
+    else toast({ type: 'success', message: `E-mail atualizado para ${emailUser.email}.` });
+  }
 
   // troca de senha: confirma a senha atual antes
   const pwForm = document.getElementById('password-form');
