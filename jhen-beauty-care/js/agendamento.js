@@ -8,7 +8,7 @@
 import { renderPublicHeader, renderPublicFooter } from './layout.js';
 import { getActiveServices, getEmployeesForService, getSettings, bookAppointment } from './data.js';
 import { createDateTimePicker } from './calendar.js';
-import { processPayment, PAYMENT_RESULT_MESSAGES } from './pagamentos.js';
+import { startCheckout, checkoutErrorMessage } from './pagamentos.js';
 import { getSession, getProfile } from './auth.js';
 import { supabaseReady } from './supabase.js';
 import {
@@ -33,6 +33,7 @@ const state = {
   settings: null,
   booking: null,       // resposta do book_appointment
   picker: null,
+  onlineEnabled: false, // Mercado Pago configurado pela administração
 };
 
 const stepsEl = document.getElementById('steps');
@@ -56,7 +57,9 @@ function allowedMethods() {
   const s = state.service;
   if (!s) return [];
   if (s.payment_mode === 'on_site') return ['on_site'];
-  const list = ['pix', 'card'];
+  const list = [];
+  // a escolha entre cartão de crédito, débito ou Pix acontece dentro do Mercado Pago
+  if (state.onlineEnabled) list.push('online');
   if (s.allow_on_site && state.settings?.on_site_payment_enabled) list.push('on_site');
   return list;
 }
@@ -93,7 +96,7 @@ function renderSummary() {
       ${state.step >= 2 ? `<div><dt>Profissional</dt><dd>${esc(empName)}</dd></div>` : ''}
       ${state.slot ? `<div><dt>Data</dt><dd>${esc(fmtDateLong(state.slot.slot_start))}</dd></div>
       <div><dt>Horário</dt><dd>${fmtTime(state.slot.slot_start)} às ${fmtTime(state.slot.slot_end)}</dd></div>` : ''}
-      ${state.method ? `<div><dt>Pagamento</dt><dd>${METHOD_LABELS[state.method]}</dd></div>` : ''}
+      ${state.method ? `<div><dt>Pagamento</dt><dd>${state.method === 'on_site' ? 'No estúdio' : METHOD_LABELS[state.method]}</dd></div>` : ''}
       <div class="summary__total"><dt>Total</dt><dd>${fmtMoney(s.price)}</dd></div>
       ${state.method && state.method !== 'on_site' && s.payment_mode === 'deposit'
         ? `<div><dt>Sinal agora</dt><dd>${fmtMoney(s.deposit_amount)}</dd></div><div><dt>Restante no dia</dt><dd>${fmtMoney(s.price - s.deposit_amount)}</dd></div>` : ''}
@@ -211,13 +214,12 @@ function stepDateTime() {
 /* ------------------------------------------------------------------ 4. resumo e pagamento */
 async function stepReview() {
   const methods = allowedMethods();
-  if (!methods.includes(state.method)) state.method = methods[0];
+  if (!methods.includes(state.method)) state.method = methods[0] || null;
   const session = await getSession();
   const s = state.service;
   const due = () => amountNow();
   const methodInfo = {
-    pix: ['pix', 'PIX', 'Aprovação na hora'],
-    card: ['card', 'Cartão', 'Crédito ou débito no checkout seguro'],
+    online: ['lock', 'Pagar online', 'Cartão de crédito, débito ou Pix pelo Mercado Pago'],
     on_site: ['store', 'No estúdio', 'Pague no dia do atendimento'],
   };
 
@@ -230,13 +232,18 @@ async function stepReview() {
       </div>
       <fieldset style="border:0;padding:0;margin:0 0 var(--space-5)">
         <legend class="field-label" style="margin-bottom:var(--space-3)">Forma de pagamento</legend>
-        <div class="pay-methods" role="radiogroup">
+        ${methods.length ? '' : `<div class="alert alert--warning">${icon('alert')}<p>O pagamento online deste procedimento está indisponível no momento. Fale com o estúdio pelo WhatsApp para agendar.</p></div>`}
+        <div class="pay-methods" role="radiogroup" style="${methods.length > 1 ? '' : 'grid-template-columns:1fr'}">
           ${methods.map((m) => `
             <button type="button" class="choice pay-method" role="radio" data-method="${m}" aria-checked="${state.method === m}">
               ${icon(methodInfo[m][0])}<span><span class="choice__title">${methodInfo[m][1]}</span><span class="choice__desc">${methodInfo[m][2]}</span></span>
             </button>`).join('')}
         </div>
         <p class="muted" id="due-text" style="margin-top:var(--space-3)"></p>
+        <div class="secure-note" id="secure-note" hidden>
+          ${icon('shield')}
+          <p>Você será levada ao <strong>ambiente seguro do Mercado Pago</strong> para pagar. Os dados do cartão são digitados lá: não pedimos nem guardamos número do cartão ou código de segurança. O horário fica reservado por ${state.settings?.payment_hold_minutes || 15} minutos e é confirmado assim que o Mercado Pago aprovar o pagamento.</p>
+        </div>
       </fieldset>
       <div class="field">
         <label for="notes">Observações para a profissional <span class="muted">(opcional)</span></label>
@@ -253,13 +260,16 @@ async function stepReview() {
   const dueText = container.querySelector('#due-text');
   const refresh = () => {
     const value = due();
+    container.querySelector('#secure-note').hidden = state.method !== 'online';
+    confirmBtn.disabled = !state.method;
+    if (!state.method) { dueText.textContent = ''; confirmBtn.textContent = 'Indisponível'; renderSummary(); return; }
     dueText.textContent = state.method === 'on_site' || s.payment_mode === 'on_site'
       ? `Você paga ${fmtMoney(s.price)} no estúdio, no dia do atendimento.`
       : s.payment_mode === 'deposit'
         ? `Agora você paga o sinal de ${fmtMoney(value)}. O restante (${fmtMoney(s.price - value)}) é pago no estúdio.`
         : `Você paga ${fmtMoney(value)} agora para confirmar o horário.`;
     confirmBtn.textContent = !session ? 'Entrar para confirmar'
-      : value > 0 ? `Confirmar e pagar ${fmtMoney(value)}` : 'Confirmar agendamento';
+      : value > 0 ? `Pagar ${fmtMoney(value)} com Mercado Pago` : 'Confirmar agendamento';
     renderSummary();
   };
   refresh();
@@ -309,19 +319,17 @@ async function confirmBooking(btn) {
     clearDraft();
     if (state.booking.status !== 'pending_payment') { finish('scheduled'); return; }
 
-    const result = await processPayment({
-      paymentId: state.booking.payment_id,
-      method: state.booking.method,
-      amount: state.booking.amount,
-      expiresAt: state.booking.expires_at,
-      description: state.service.name,
-    });
-    if (result === 'redirect') return;
-    if (result === 'approved') { finish('approved'); return; }
-    toast(PAYMENT_RESULT_MESSAGES[result] || PAYMENT_RESULT_MESSAGES.pending);
-    if (result === 'expired') { state.booking = null; state.slot = null; go(3); }
-    if (result === 'pending') finish('pending');
-    // 'rejected': permanece no resumo para tentar novamente
+    // Pagamento online: o servidor cria o checkout do Mercado Pago com o valor do banco
+    const label = btn.querySelector('.btn__label');
+    if (label) label.textContent = 'Preparando pagamento seguro…';
+    try {
+      await startCheckout(state.booking.payment_id); // redireciona para o Mercado Pago
+    } catch (err) {
+      toast({ type: 'error', message: checkoutErrorMessage(err) });
+      if (/PAYMENT_EXPIRED/.test(err.message)) { state.booking = null; state.slot = null; go(3); }
+      if (/ALREADY_PAID|PAYMENT_IN_PROCESS/.test(err.message)) location.href = url(`pagamento.html?ref=${state.booking.payment_id}`);
+      // demais erros: a reserva continua; a cliente pode tentar de novo ou pagar em "Minhas compras"
+    }
   }, 'Confirmando…');
 }
 
@@ -344,11 +352,7 @@ async function finish(kind) {
   renderSteps();
   renderSummary();
   const profile = await getProfile().catch(() => null);
-  const titles = {
-    approved: 'Pagamento aprovado. Seu agendamento foi confirmado!',
-    scheduled: 'Seu agendamento foi confirmado!',
-    pending: 'Horário reservado, falta o pagamento',
-  };
+  const titles = { scheduled: 'Seu agendamento foi confirmado!' };
   container.innerHTML = `
     <section class="step-panel panel text-center" aria-labelledby="st5">
       <div class="success-mark" ${kind === 'pending' ? 'style="background:var(--color-warning-soft);color:var(--color-warning)"' : ''}>${icon(kind === 'pending' ? 'clock' : 'check')}</div>
@@ -376,6 +380,7 @@ async function init() {
   container.innerHTML = skeletonHTML(4);
   try {
     [state.services, state.settings] = await Promise.all([getActiveServices(), getSettings()]);
+    state.onlineEnabled = state.settings?.payment_provider === 'mercadopago';
   } catch (err) {
     container.innerHTML = errorHTML(errorMessage(err, 'Não foi possível carregar os procedimentos.'), 'retry');
     document.getElementById('retry')?.addEventListener('click', init);

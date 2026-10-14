@@ -69,7 +69,7 @@ async function view(p) {
     const done = appts.filter((a) => a.status === 'completed');
     const spent = appts.reduce((s, a) => s + paymentSummary(a.payments).paid, 0);
     m.body.innerHTML = `
-      <div style="display:flex;gap:var(--space-4);align-items:center;margin-bottom:var(--space-5)">
+      <div class="media-field" style="margin-bottom:var(--space-5)">
         <span class="avatar avatar--lg">${esc(initials(p.full_name))}</span>
         <dl class="kv"><dt>E-mail</dt><dd>${esc(p.email || '—')}</dd><dt>Telefone</dt><dd>${esc(p.phone || '—')}</dd>
         <dt>Nascimento</dt><dd>${p.birth_date ? fmtDate(`${p.birth_date}T12:00:00Z`) : '—'}</dd><dt>Cadastro</dt><dd>${fmtDate(p.created_at)}</dd></dl>

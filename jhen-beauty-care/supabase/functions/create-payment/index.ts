@@ -1,117 +1,131 @@
 // =============================================================================
 // Edge Function: create-payment
-// Cria a cobrança no Mercado Pago para um pagamento PENDENTE do próprio usuário.
-//   - PIX    → /v1/payments (QR Code + copia e cola, expira junto com a reserva)
-//   - Cartão → /checkout/preferences (Checkout Pro: o cartão é digitado no Mercado Pago)
-// O valor vem do BANCO (nunca do navegador). Nenhum dado de cartão passa por aqui.
+// Prepara o pagamento de um agendamento no Checkout Pro do Mercado Pago.
 //
-// Secrets necessários: MP_ACCESS_TOKEN, SITE_URL (ex.: https://jhenbeautycare.com.br)
-// Opcional: ALLOWED_ORIGINS (ex.: https://jhenbeautycare.com.br)
+// Segurança:
+//  - exige usuário autenticado e só aceita pagamentos da PRÓPRIA cliente;
+//  - o VALOR, o procedimento e a cliente vêm do banco, nunca do navegador;
+//  - recusa pagamento expirado, já pago, em análise ou com pagamento online desligado;
+//  - reaproveita a preferência ainda válida (sem duplicar cobranças);
+//  - limite de tentativas por usuário; CORS restrito; nada de segredo na resposta;
+//  - os dados do cartão são digitados no Mercado Pago, nunca passam por aqui.
+//
+// Secrets: MERCADOPAGO_ACCESS_TOKEN, MERCADOPAGO_ENV, SITE_URL (e opcional ALLOWED_ORIGINS)
 // =============================================================================
-import { adminClient, callerUser, corsHeaders, env, json } from '../_shared/utils.ts';
-
-const MP_API = Deno.env.get('MP_API_URL') ?? 'https://api.mercadopago.com';
-
-/** Formato exigido pelo Mercado Pago: 2026-10-07T20:15:00.000-03:00 */
-function mpDate(d: Date, offset = '-03:00'): string {
-  const local = new Date(d.getTime() - 3 * 3600_000);
-  return local.toISOString().replace('Z', offset);
-}
+import { adminClient, callerUser, ConfigError, corsHeaders, env, fail, isUuid, json, log, originAllowed, rateLimit, readJson, errCode } from '../_shared/utils.ts';
+import { createPreference, isCheckoutUrl, mpConfig, mpDate, MpError, recordEvent } from '../_shared/mercadopago.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
-  if (req.method !== 'POST') return json(req, { message: 'Method not allowed' }, 405);
+  if (req.method !== 'POST') return fail(req, 405, 'METHOD_NOT_ALLOWED');
+  if (!originAllowed(req)) return fail(req, 403, 'ORIGIN_NOT_ALLOWED');
 
   try {
+    const cfg = mpConfig(); // falha cedo se o Mercado Pago não estiver configurado
     const caller = await callerUser(req);
-    if (!caller) return json(req, { message: 'NOT_AUTHENTICATED' }, 401);
+    if (!caller) return fail(req, 401, 'NOT_AUTHENTICATED');
 
-    const { payment_id } = await req.json().catch(() => ({}));
-    if (!payment_id || typeof payment_id !== 'string') return json(req, { message: 'payment_id obrigatório' }, 400);
+    const body = await readJson(req);
+    const paymentId = body?.payment_id;
+    if (!isUuid(paymentId)) return fail(req, 400, 'INVALID_REQUEST');
 
     const db = adminClient();
-    const { data: p, error } = await db
-      .from('payments')
-      .select('id, amount, method, status, client_id, appointment:appointments(id, status, created_at, starts_at, service:services(name)), client:profiles(full_name, email)')
-      .eq('id', payment_id)
-      .single();
-    if (error || !p) return json(req, { message: 'Pagamento não encontrado' }, 404);
+    if (!(await rateLimit(db, `create-payment:${caller.user.id}`, 10, 600))) return fail(req, 429, 'TOO_MANY_REQUESTS');
 
-    // Somente a dona do pagamento, com reserva ainda aguardando pagamento
-    if (p.client_id !== caller.user.id) return json(req, { message: 'FORBIDDEN' }, 403);
+    const { data: settings } = await db.from('settings').select('payment_provider, business_name').eq('id', 1).single();
+    if (settings?.payment_provider !== 'mercadopago') return fail(req, 503, 'ONLINE_PAYMENT_UNAVAILABLE');
+
+    const { data: p } = await db
+      .from('payments')
+      .select(`id, client_id, amount, currency, kind, method, status, provider_preference_id, checkout_url, checkout_expires_at,
+               appointment:appointments(id, status, starts_at, service:services(name)),
+               client:profiles(full_name, email)`)
+      .eq('id', paymentId)
+      .maybeSingle();
+    // pagamento de outra pessoa responde igual a inexistente (não revela que existe)
+    if (!p || p.client_id !== caller.user.id) return fail(req, 404, 'NOT_FOUND');
+    if (p.method !== 'online') return fail(req, 409, 'NOT_ONLINE_PAYMENT');
+    if (['approved', 'refund_pending', 'refunded'].includes(p.status)) return fail(req, 409, 'ALREADY_PAID');
+    if (p.status === 'in_process') return fail(req, 409, 'PAYMENT_IN_PROCESS');
+    if (['charged_back', 'in_mediation'].includes(p.status)) return fail(req, 409, 'INVALID_STATUS');
+
     // deno-lint-ignore no-explicit-any
     const appt = p.appointment as any;
-    if (!['pending', 'rejected'].includes(p.status) || appt?.status !== 'pending_payment') {
-      return json(req, { message: 'PAYMENT_EXPIRED' }, 409);
+    const expiresAt = p.checkout_expires_at ? new Date(p.checkout_expires_at) : null;
+    // margem de 1 min para a cliente conseguir concluir no Mercado Pago
+    if (!appt || appt.status !== 'pending_payment' || !expiresAt || expiresAt.getTime() < Date.now() + 60_000) {
+      return fail(req, 409, 'PAYMENT_EXPIRED');
     }
-    if (p.method === 'on_site') return json(req, { message: 'Pagamento presencial' }, 400);
 
-    const { data: settings } = await db.from('settings').select('payment_hold_minutes, business_name').eq('id', 1).single();
-    const expiresAt = new Date(new Date(appt.created_at).getTime() + (settings?.payment_hold_minutes ?? 15) * 60_000);
+    // Reaproveita a preferência já criada para este pagamento (duplo clique, voltar do checkout etc.)
+    if (p.provider_preference_id && isCheckoutUrl(p.checkout_url)) {
+      return json(req, { url: p.checkout_url, expires_at: p.checkout_expires_at, reused: true });
+    }
+
+    const site = env('SITE_URL').replace(/\/+$/, '');
+    const back = (r: string) => `${site}/pagamento.html?ref=${p.id}&r=${r}`;
     // deno-lint-ignore no-explicit-any
     const client = p.client as any;
-    const description = `${appt.service?.name ?? 'Procedimento'} — ${settings?.business_name ?? 'JHEN beauty care'}`;
-    const notificationUrl = `${env('SUPABASE_URL')}/functions/v1/payment-webhook`;
-    const headers = {
-      Authorization: `Bearer ${env('MP_ACCESS_TOKEN')}`,
-      'Content-Type': 'application/json',
-      'X-Idempotency-Key': `${p.id}-${p.method}-${p.status}`,
+    const [firstName, ...rest] = String(client?.full_name ?? '').replace(/\(.*?\)/g, '').trim().split(/\s+/);
+    const title = `${appt.service?.name ?? 'Procedimento'} — ${settings?.business_name ?? 'JHEN beauty care'}`.slice(0, 250);
+
+    const preference = {
+      items: [{
+        id: p.id,
+        title,
+        description: p.kind === 'deposit' ? 'Sinal para reservar o horário' : 'Pagamento do procedimento agendado',
+        quantity: 1,
+        currency_id: p.currency || 'BRL',
+        unit_price: Number(p.amount), // valor do BANCO
+      }],
+      payer: { email: client?.email ?? undefined, name: firstName || undefined, surname: rest.join(' ') || undefined },
+      external_reference: p.id,
+      back_urls: { success: back('success'), pending: back('pending'), failure: back('failure') },
+      // retorno automático só com HTTPS (endereços locais, como o Live Server, podem ser recusados pelo MP)
+      ...(site.startsWith('https://') ? { auto_return: 'approved' } : {}),
+      // o checkout deixa de aceitar pagamentos quando a reserva do horário expira
+      expires: true,
+      expiration_date_from: mpDate(new Date(Date.now() - 60_000)),
+      expiration_date_to: mpDate(expiresAt),
+      payment_methods: {
+        // sem boleto/lotérica: levam dias para compensar e a reserva do horário dura minutos
+        excluded_payment_types: [{ id: 'ticket' }, { id: 'atm' }],
+        installments: cfg.maxInstallments,
+      },
+      statement_descriptor: cfg.statementDescriptor,
+      metadata: { payment_id: p.id, appointment_id: appt.id },
     };
 
-    if (p.method === 'pix') {
-      const res = await fetch(`${MP_API}/v1/payments`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          transaction_amount: Number(p.amount),
-          description,
-          payment_method_id: 'pix',
-          external_reference: p.id,
-          notification_url: notificationUrl,
-          date_of_expiration: mpDate(expiresAt),
-          payer: { email: client?.email, first_name: (client?.full_name ?? '').split(' ')[0] },
-        }),
-      });
-      const mp = await res.json();
-      if (!res.ok) {
-        console.error('MP pix error', res.status, mp);
-        return json(req, { message: 'Gateway indisponível' }, 502);
-      }
-      await db.from('payments').update({ provider: 'mercadopago', provider_payment_id: String(mp.id) }).eq('id', p.id);
-      const tx = mp.point_of_interaction?.transaction_data ?? {};
-      return json(req, { type: 'pix', qr_code: tx.qr_code, qr_code_base64: tx.qr_code_base64, ticket_url: tx.ticket_url });
+    let pref: Record<string, unknown>;
+    try {
+      // a mesma chave dentro do mesmo minuto evita preferências duplicadas por cliques repetidos
+      pref = await createPreference(preference, `pref-${p.id}-${Math.floor(Date.now() / 60_000)}`);
+    } catch (err) {
+      const code = err instanceof MpError ? err.message : 'error';
+      await recordEvent(db, { source: 'checkout', payment_id: p.id, outcome: 'preference_failed', detail: code });
+      log('preference_failed', { payment_id: p.id, code });
+      return fail(req, 502, 'GATEWAY_UNAVAILABLE');
     }
 
-    // Cartão: Checkout Pro (página do Mercado Pago)
-    const back = `${env('SITE_URL')}/cliente/agendamentos.html?payment_id=${p.id}`;
-    const res = await fetch(`${MP_API}/checkout/preferences`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        items: [{ id: p.id, title: description, quantity: 1, unit_price: Number(p.amount), currency_id: 'BRL' }],
-        payer: { email: client?.email, name: client?.full_name },
-        external_reference: p.id,
-        notification_url: notificationUrl,
-        back_urls: { success: back, failure: back, pending: back },
-        auto_return: 'approved',
-        expires: true,
-        expiration_date_to: mpDate(expiresAt),
-        payment_methods: {
-          excluded_payment_types: [{ id: 'ticket' }, { id: 'atm' }, { id: 'bank_transfer' }],
-          installments: 1,
-        },
-        statement_descriptor: 'JHEN BEAUTY',
-      }),
-    });
-    const pref = await res.json();
-    if (!res.ok) {
-      console.error('MP preference error', res.status, pref);
-      return json(req, { message: 'Gateway indisponível' }, 502);
+    // credenciais antigas de teste (TEST-...) usam sandbox_init_point; as atuais usam init_point
+    const url = cfg.mode === 'test' && cfg.token.startsWith('TEST-') && pref.sandbox_init_point
+      ? pref.sandbox_init_point
+      : pref.init_point;
+    if (!pref.id || !isCheckoutUrl(url)) {
+      await recordEvent(db, { source: 'checkout', payment_id: p.id, outcome: 'preference_invalid' });
+      return fail(req, 502, 'GATEWAY_UNAVAILABLE');
     }
-    await db.from('payments').update({ provider: 'mercadopago' }).eq('id', p.id);
-    return json(req, { type: 'redirect', url: pref.init_point });
+
+    await db.from('payments').update({ provider_preference_id: String(pref.id), checkout_url: url, provider: 'mercadopago' }).eq('id', p.id);
+    await recordEvent(db, { source: 'checkout', payment_id: p.id, outcome: 'preference_created' });
+    log('preference_created', { payment_id: p.id, mode: cfg.mode });
+    return json(req, { url, expires_at: p.checkout_expires_at, reused: false });
   } catch (err) {
-    console.error(err);
-    return json(req, { message: 'Erro interno' }, 500);
+    if (err instanceof ConfigError) {
+      log('config_missing', { variable: err.variable });
+      return fail(req, 503, 'ONLINE_PAYMENT_UNAVAILABLE');
+    }
+    console.error('create-payment', errCode(err));
+    return fail(req, 500, 'INTERNAL_ERROR');
   }
 });

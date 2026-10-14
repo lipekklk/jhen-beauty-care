@@ -3,7 +3,7 @@
  * (sidebar + topbar). Mantém um único lugar para links e identidade visual.
  */
 import { icon } from './icons.js';
-import { url, esc, waLink, WEEKDAYS, initials, ROLE_LABELS, todayKey, weekdayOfKey } from './utils.js';
+import { url, esc, waLink, igLink, WEEKDAYS, initials, ROLE_LABELS, todayKey, weekdayOfKey } from './utils.js';
 import { getSession, getProfile, signOut, dashboardUrl } from './auth.js';
 import { getSettings, getBusinessHours } from './data.js';
 import { supabaseReady } from './supabase.js';
@@ -44,15 +44,22 @@ export async function renderPublicHeader(active) {
   const header = document.getElementById('site-header');
   const toggle = header.querySelector('.nav-toggle');
   const nav = header.querySelector('.nav');
+  const isOpen = () => toggle.getAttribute('aria-expanded') === 'true';
   const setOpen = (open) => {
     toggle.setAttribute('aria-expanded', String(open));
     toggle.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
     nav.classList.toggle('is-open', open);
     document.body.classList.toggle('nav-open', open);
   };
-  toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
+  toggle.addEventListener('click', () => setOpen(!isOpen()));
   nav.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setOpen(false)));
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !isOpen()) return;
+    setOpen(false);
+    toggle.focus();
+  });
+  // ao passar para o layout de desktop o menu mobile fecha (senão a página ficaria sem rolagem)
+  matchMedia('(min-width: 961px)').addEventListener('change', (e) => { if (e.matches) setOpen(false); });
   const onScroll = () => header.classList.toggle('is-scrolled', window.scrollY > 8);
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
@@ -74,7 +81,7 @@ export async function renderPublicFooter() {
   let s = {};
   let hours = [];
   try { [s, hours] = await Promise.all([getSettings(), getBusinessHours()]); } catch { /* rodapé sem dados dinâmicos */ }
-  const ig = s.instagram ? `https://instagram.com/${encodeURIComponent(s.instagram)}` : '';
+  const ig = s.instagram ? igLink(s.instagram) : '';
   const hoursList = hours.length ? summarizeHours(hours) : [];
   host.outerHTML = `
   <footer class="site-footer">
@@ -157,6 +164,7 @@ const APP_NAV = {
   client: [
     { href: 'cliente/dashboard.html', label: 'Início', icon: 'home', key: 'dashboard' },
     { href: 'cliente/agendamentos.html', label: 'Meus agendamentos', icon: 'calendar', key: 'agendamentos' },
+    { href: 'cliente/compras.html', label: 'Minhas compras', icon: 'card', key: 'compras' },
     { href: 'agendamento.html', label: 'Novo agendamento', icon: 'plus', key: 'novo' },
     { href: 'cliente/perfil.html', label: 'Meus dados', icon: 'user', key: 'perfil' },
   ],
@@ -214,13 +222,19 @@ export function renderAppShell(profile, area, active) {
   backdrop.className = 'sidebar-backdrop';
   document.body.appendChild(backdrop);
   const menuBtn = document.querySelector('.topbar__menu');
-  const setOpen = (open) => {
+  const isOpen = () => sidebar.classList.contains('is-open');
+  const setOpen = (open, { returnFocus = false } = {}) => {
     sidebar.classList.toggle('is-open', open);
     backdrop.classList.toggle('is-open', open);
+    document.body.classList.toggle('drawer-open', open);
     menuBtn?.setAttribute('aria-expanded', String(open));
+    menuBtn?.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
     if (open) sidebar.querySelector('a, button')?.focus();
+    else if (returnFocus) menuBtn?.focus();
   };
-  menuBtn?.addEventListener('click', () => setOpen(!sidebar.classList.contains('is-open')));
-  backdrop.addEventListener('click', () => setOpen(false));
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
+  menuBtn?.addEventListener('click', () => setOpen(!isOpen()));
+  backdrop.addEventListener('click', () => setOpen(false, { returnFocus: true }));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isOpen()) setOpen(false, { returnFocus: true }); });
+  // no desktop a sidebar é fixa: a gaveta mobile fecha ao trocar de layout
+  matchMedia('(min-width: 961px)').addEventListener('change', (e) => { if (e.matches) setOpen(false); });
 }

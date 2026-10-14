@@ -120,13 +120,37 @@ export const STATUS_LABELS = {
 };
 export const PAYMENT_STATUS_LABELS = {
   pending: 'Pendente',
+  in_process: 'Em análise',
   approved: 'Aprovado',
   rejected: 'Recusado',
   cancelled: 'Cancelado',
   refund_pending: 'Estorno pendente',
   refunded: 'Estornado',
+  charged_back: 'Contestado',
+  in_mediation: 'Em disputa',
 };
-export const METHOD_LABELS = { pix: 'PIX', card: 'Cartão', on_site: 'No local' };
+export const METHOD_LABELS = { online: 'Mercado Pago', pix: 'PIX', card: 'Cartão', on_site: 'No local' };
+/** Meio usado dentro do Mercado Pago (payment_type_id oficial). */
+export const PAYMENT_TYPE_LABELS = {
+  credit_card: 'Cartão de crédito',
+  debit_card: 'Cartão de débito',
+  prepaid_card: 'Cartão pré-pago',
+  bank_transfer: 'Pix',
+  account_money: 'Saldo Mercado Pago',
+  digital_currency: 'Mercado Crédito',
+  digital_wallet: 'Carteira digital',
+  ticket: 'Boleto',
+};
+/** "Cartão de crédito · Visa final 1234" — só dados mascarados devolvidos pelo Mercado Pago. */
+export function paymentMethodLabel(p = {}) {
+  if (p.method === 'on_site' || p.payment_method === 'on_site') return 'No estúdio';
+  const type = p.payment_type ? (PAYMENT_TYPE_LABELS[p.payment_type] || 'Mercado Pago') : null;
+  if (!type) return METHOD_LABELS[p.method || p.payment_method] || 'Mercado Pago';
+  const brand = p.payment_method_id && !['pix', 'account_money'].includes(p.payment_method_id)
+    ? ` · ${p.payment_method_id.charAt(0).toUpperCase()}${p.payment_method_id.slice(1)}` : '';
+  const last4 = p.card_last_four ? ` final ${p.card_last_four}` : '';
+  return `${type}${brand}${last4}`;
+}
 export const KIND_LABELS = { full: 'Valor integral', deposit: 'Sinal', on_site: 'Pagamento no local' };
 export const ROLE_LABELS = { client: 'Cliente', employee: 'Funcionária', admin: 'Administradora' };
 export const WEEKDAYS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -138,7 +162,8 @@ export const testBadge = (flag) => (flag ? '<span class="badge badge--test" titl
 
 /** Resumo do pagamento de um agendamento a partir da lista de payments. */
 export function paymentSummary(payments = []) {
-  const approved = payments.filter((p) => ['approved', 'refund_pending', 'refunded'].includes(p.status));
+  const approved = payments.filter((p) => ['approved', 'refund_pending'].includes(p.status)
+    || (p.status === 'refunded' && Number(p.refund_amount) < Number(p.amount)));
   const paid = approved.reduce((s, p) => s + Number(p.amount), 0);
   const main = payments.slice().sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
   let label = 'Pendente';
@@ -147,8 +172,11 @@ export function paymentSummary(payments = []) {
   else if (approved.some((p) => p.kind === 'deposit')) { label = 'Sinal pago'; status = 'approved'; }
   else if (main?.method === 'on_site') { label = 'Pagar no local'; status = 'pending'; }
   else if (main?.status === 'rejected') { label = 'Recusado'; status = 'rejected'; }
+  else if (main?.status === 'in_process') { label = 'Em análise'; status = 'in_process'; }
   if (payments.some((p) => p.status === 'refund_pending')) { label = 'Estorno pendente'; status = 'refund_pending'; }
   if (payments.some((p) => p.status === 'refunded')) { label = 'Estornado'; status = 'refunded'; }
+  if (payments.some((p) => p.status === 'in_mediation')) { label = 'Em disputa'; status = 'in_mediation'; }
+  if (payments.some((p) => p.status === 'charged_back')) { label = 'Contestado'; status = 'charged_back'; }
   return { paid, label, status, main };
 }
 
@@ -181,6 +209,10 @@ export function passwordStrength(pw = '') {
 export const waLink = (number, text = '') =>
   `https://wa.me/${onlyDigits(number)}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
 
+/** Link do perfil do Instagram a partir do usuário (com ou sem @). */
+export const igLink = (user = '') =>
+  `https://www.instagram.com/${encodeURIComponent(String(user).trim().replace(/^@/, ''))}/`;
+
 /* ------------------------------------------------------------------ erros */
 export const ERROR_MESSAGES = {
   NOT_AUTHENTICATED: 'Sua sessão expirou. Entre novamente para continuar.',
@@ -199,16 +231,30 @@ export const ERROR_MESSAGES = {
   RESCHEDULE_NOT_ALLOWED: 'O prazo para remarcar online já passou. Fale com o estúdio pelo WhatsApp.',
   RESCHEDULE_LIMIT: 'Você atingiu o limite de remarcações deste agendamento.',
   TOO_EARLY_FOR_STATUS: 'Este status só pode ser usado no dia do atendimento.',
-  SANDBOX_DISABLED: 'Pagamento de teste desativado. Use o pagamento real.',
-  PAYMENT_EXPIRED: 'O prazo para pagar esta reserva acabou. Faça um novo agendamento.',
+  PAYMENT_EXPIRED: 'O prazo para pagar esta reserva acabou e o horário foi liberado. Faça um novo agendamento.',
+  ONLINE_PAYMENT_UNAVAILABLE: 'O pagamento online está indisponível no momento. Escolha pagar no estúdio ou fale com a gente.',
+  ALREADY_PAID: 'Este agendamento já está pago.',
+  PAYMENT_IN_PROCESS: 'Seu pagamento está em análise pelo Mercado Pago. Aguarde a confirmação antes de tentar de novo.',
+  NOT_ONLINE_PAYMENT: 'Este agendamento é pago no estúdio.',
+  GATEWAY_UNAVAILABLE: 'Não foi possível conectar ao Mercado Pago agora. Tente novamente em instantes.',
+  REFUND_FAILED: 'O Mercado Pago não aceitou o estorno agora. Tente novamente ou faça pelo painel do Mercado Pago.',
+  NOTHING_TO_REFUND: 'Não há valor a estornar.',
+  TOO_MANY_REQUESTS: 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.',
+  PAYMENT_STATUS_LOCKED: 'Pagamentos online só mudam de status pela confirmação do Mercado Pago.',
+  ORIGIN_NOT_ALLOWED: 'Este endereço do site não está autorizado a processar pagamentos. Verifique a configuração.',
+  INVALID_REQUEST: 'Requisição inválida.',
+  NOT_FOUND: 'Registro não encontrado.',
+  INTERNAL_ERROR: 'Algo deu errado do nosso lado. Tente novamente.',
   USER_NOT_FOUND: 'Nenhuma conta com este e-mail. Peça para a pessoa se cadastrar primeiro ou envie um convite.',
   CANNOT_DEMOTE_SELF: 'Você não pode remover seu próprio acesso de administradora.',
   INVALID_IMAGE_TYPE: 'Envie uma imagem JPG, PNG ou WebP.',
   IMAGE_TOO_LARGE: 'A imagem deve ter no máximo 5 MB.',
   CONFIG_MISSING: 'O site ainda não foi conectado ao Supabase. Configure js/config.js.',
+  USER_ALREADY_REGISTERED: 'Já existe uma conta com este e-mail. Entre ou recupere a senha.',
   'Invalid login credentials': 'E-mail ou senha incorretos.',
-  'Email not confirmed': 'Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.',
+  'Email not confirmed': 'Seu e-mail ainda não foi confirmado. Clique no link que enviamos no cadastro.',
   'User already registered': 'Já existe uma conta com este e-mail. Tente entrar ou recuperar a senha.',
+  'Signups not allowed for this instance': 'Novos cadastros estão desativados no momento. Fale com o estúdio.',
   'Password should be at least 6 characters': 'A senha precisa ter pelo menos 8 caracteres.',
   'New password should be different from the old password.': 'A nova senha precisa ser diferente da atual.',
   'Email rate limit exceeded': 'Muitas tentativas. Aguarde alguns minutos e tente de novo.',
@@ -227,7 +273,11 @@ export function errorMessage(err, fallback = 'Algo deu errado. Tente novamente.'
   if (err.code === '23505') return 'Já existe um registro com estes dados.';
   if (err.code === '23503') return 'Este registro está em uso e não pode ser removido. Desative-o em vez de excluir.';
   if (err.code === '23514' || err.code === '22P02') return 'Verifique os dados informados.';
-  if (/rate limit/i.test(msg)) return ERROR_MESSAGES['Email rate limit exceeded'];
+  if (/rate limit|over_email_send_rate_limit|too many requests/i.test(msg) || err.status === 429) return ERROR_MESSAGES['Email rate limit exceeded'];
+  if (/for security purposes, you can only request this after/i.test(msg)) return 'Aguarde alguns segundos antes de pedir outro e-mail.';
+  if (/email address .* is invalid|invalid email|unable to validate email/i.test(msg)) return 'Este e-mail não foi aceito. Confira se está correto e use um endereço real.';
+  if (err.code === 'PGRST116') return ERROR_MESSAGES.PROFILE_NOT_FOUND;
+  if (/error sending (confirmation|recovery) email/i.test(msg)) return 'O servidor de e-mail recusou o envio. Tente de novo em alguns minutos.';
   return fallback;
 }
 

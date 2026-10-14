@@ -26,12 +26,20 @@ export async function getProfile(force = false) {
   if (profileCache && !force) return profileCache;
   const session = await getSession();
   if (!session) return null;
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('profiles')
     .select('id, role, full_name, email, phone, birth_date, avatar_url, is_blocked, is_test_data')
     .eq('id', session.user.id)
-    .single();
+    .maybeSingle();
   if (error) throw error;
+  if (!data) {
+    // Conta existe no Auth mas está sem perfil (criada antes do trigger ou perfil apagado):
+    // recria a partir dos dados do cadastro em vez de bloquear o login.
+    console.warn('[auth] perfil ausente para', session.user.id, '— recriando via ensure_profile()');
+    ({ data, error } = await supabase.rpc('ensure_profile'));
+    if (error) throw error;
+    if (!data?.id) throw new Error('PROFILE_NOT_FOUND');
+  }
   // id do registro de profissional (admin também pode atender)
   const { data: empId } = await supabase.rpc('current_employee_id');
   profileCache = { ...data, employee_id: empId || null, auth_email: session.user.email };
@@ -69,7 +77,23 @@ export async function signUp({ fullName, email, phone, password }) {
     },
   });
   if (error) throw error;
+  // Com "Confirm email" ligado, o Supabase NÃO retorna erro para e-mail já cadastrado:
+  // devolve um usuário "falso" sem identidades (proteção contra descoberta de e-mails),
+  // não cria nada e não envia e-mail. Detectamos para avisar a pessoa corretamente.
+  if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    throw new Error('USER_ALREADY_REGISTERED');
+  }
   return data; // data.session é null quando a confirmação de e-mail está ativa
+}
+
+/** Reenvia o e-mail de confirmação de cadastro. */
+export async function resendConfirmation(email) {
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: email.trim().toLowerCase(),
+    options: { emailRedirectTo: url('login.html?confirmado=1') },
+  });
+  if (error) throw error;
 }
 
 let signingOut = false;

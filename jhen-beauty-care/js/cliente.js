@@ -6,11 +6,10 @@ import { requireRole, getProfile, clearProfileCache, signIn } from './auth.js';
 import { renderAppShell } from './layout.js';
 import { APPOINTMENT_SELECT, getSettings } from './data.js';
 import { showDetails, cancelFlow, rescheduleFlow, payFlow, reviewFlow, isUpcoming, canPay } from './appointment-actions.js';
-import { getPaymentStatus } from './pagamentos.js';
 import {
   esc, url, fmtMoney, fmtTime, fmtDateLong, fmtWeekdayShort, fmtDayNum, fmtMonthShort, fmtRelative,
   statusBadge, paymentSummary, errorMessage, firstName, unwrap, getParam, isValidPhone, maskPhone, isValidEmail, initials,
-  testBadge,
+  testBadge, fmtDateTime, paymentBadge, paymentMethodLabel, KIND_LABELS,
 } from './utils.js';
 import { toast, emptyHTML, errorHTML, skeletonHTML, validate, withLoading, bindTabs, bindPasswordToggles } from './ui.js';
 import { icon } from './icons.js';
@@ -35,7 +34,7 @@ function bindActions(root, list, reload) {
       if (act === 'details') return showDetails(a, { onAction: run });
       if (act === 'cancel') changed = await cancelFlow(a);
       if (act === 'reschedule') changed = await rescheduleFlow(a);
-      if (act === 'pay') changed = await payFlow(a);
+      if (act === 'pay') changed = await payFlow(a, btn);
       if (act === 'review') changed = await reviewFlow(a, profile.id);
       if (changed) reload();
       return undefined;
@@ -162,17 +161,6 @@ async function initAppointments() {
   bindTabs(document.getElementById('appt-tabs'));
 
   // retorno do checkout do gateway (cartão)
-  const returnedPayment = getParam('payment_id');
-  if (returnedPayment) {
-    try {
-      const p = await getPaymentStatus(returnedPayment);
-      if (p.status === 'approved') toast({ type: 'success', message: 'Pagamento aprovado. Seu agendamento foi confirmado!' });
-      else if (p.status === 'rejected') toast({ type: 'error', message: 'Não foi possível concluir o pagamento. Tente novamente.' });
-      else toast({ type: 'info', message: 'Estamos aguardando a confirmação do pagamento. Isso pode levar alguns minutos.' });
-    } catch { /* silencioso */ }
-    history.replaceState(null, '', location.pathname);
-  }
-
   const reload = async () => {
     Object.values(panels).forEach((p) => { p.innerHTML = skeletonHTML(3); });
     try {
@@ -198,6 +186,56 @@ async function initAppointments() {
     }
   };
   reload();
+}
+
+/* ------------------------------------------------------------------ minhas compras */
+async function initPurchases() {
+  const el = document.getElementById('purchases');
+  const stats = document.getElementById('purchase-stats');
+  el.innerHTML = skeletonHTML(4);
+  try {
+    // view "purchases": RLS garante que a cliente só vê as próprias compras
+    const list = unwrap(await supabase.from('purchases').select('*').order('purchase_date', { ascending: false }));
+    const paid = list.filter((p) => ['approved', 'refund_pending'].includes(p.status) || (p.status === 'refunded' && Number(p.refund_amount) < Number(p.amount)));
+    const total = paid.reduce((sum, p) => sum + Number(p.amount) - (p.status === 'refunded' ? Number(p.refund_amount) : 0), 0);
+    stats.innerHTML = `
+      <div class="stat"><span class="stat__label">Compras</span><span class="stat__value">${list.length}</span></div>
+      <div class="stat"><span class="stat__label">Total pago</span><span class="stat__value">${fmtMoney(total)}</span></div>
+      <div class="stat"><span class="stat__label">Aguardando pagamento</span><span class="stat__value">${list.filter((p) => p.appointment_status === 'pending_payment').length}</span></div>`;
+    if (!list.length) {
+      el.innerHTML = emptyHTML({ title: 'Nenhuma compra ainda', text: 'Os pagamentos dos seus agendamentos aparecem aqui.', action: { label: 'Agendar agora', href: url('agendamento.html') } });
+      return;
+    }
+    const canRetry = (p) => p.appointment_status === 'pending_payment' && ['pending', 'rejected'].includes(p.status)
+      && p.payment_method !== 'on_site' && p.checkout_expires_at && new Date(p.checkout_expires_at) > new Date(Date.now() + 60_000);
+    const access = (p) => {
+      if (p.access_granted) return '<span class="badge status--completed">Horário confirmado</span>';
+      if (p.appointment_status === 'pending_payment') return '<span class="badge status--pending">Aguardando pagamento</span>';
+      if (p.appointment_status === 'cancelled') return '<span class="badge status--cancelled">Horário liberado</span>';
+      return `<span class="badge">${esc(p.appointment_status)}</span>`;
+    };
+    el.innerHTML = `<div class="table-wrap"><table class="table table--stack">
+      <thead><tr><th>Procedimento</th><th class="num">Valor</th><th>Status</th><th>Pagamento</th><th>Acesso</th><th class="actions-cell"><span class="sr-only">Ações</span></th></tr></thead>
+      <tbody>${list.map((p) => `
+        <tr>
+          <td data-label="Procedimento"><span class="cell-strong">${esc(p.product_name)}</span> ${testBadge(p.is_test_data)}
+            <span class="cell-sub">${esc(fmtDateLong(p.appointment_starts_at))}, ${fmtTime(p.appointment_starts_at)}</span>
+            <span class="cell-sub">Compra em ${fmtDateTime(p.purchase_date)}</span></td>
+          <td data-label="Valor" class="num">${fmtMoney(p.amount)}<span class="cell-sub">${esc(KIND_LABELS[p.kind] || '')}</span>
+            ${Number(p.refund_amount) > 0 && ['refunded', 'refund_pending'].includes(p.status) ? `<span class="cell-sub">estorno ${fmtMoney(p.refund_amount)}</span>` : ''}</td>
+          <td data-label="Status">${paymentBadge(p.status)}</td>
+          <td data-label="Pagamento">${esc(paymentMethodLabel(p))}${p.mercadopago_payment_id ? `<span class="cell-sub">Transação nº ${esc(p.mercadopago_payment_id)}</span>` : ''}</td>
+          <td data-label="Acesso">${access(p)}</td>
+          <td class="actions-cell">${canRetry(p) ? `<button class="btn btn--sm" data-pay="${p.id}">${icon('lock')} Pagar</button>` : ''}</td>
+        </tr>`).join('')}</tbody></table></div>`;
+    el.querySelectorAll('[data-pay]').forEach((b) => b.addEventListener('click', () => withLoading(b, async () => {
+      const { startCheckout, checkoutErrorMessage } = await import('./pagamentos.js');
+      try { await startCheckout(b.dataset.pay); } catch (err) { toast({ type: 'error', message: checkoutErrorMessage(err) }); }
+    }, 'Preparando pagamento seguro…')));
+  } catch (err) {
+    el.innerHTML = errorHTML(errorMessage(err), 'retry-purchases');
+    document.getElementById('retry-purchases')?.addEventListener('click', initPurchases);
+  }
 }
 
 /* ------------------------------------------------------------------ perfil */
@@ -304,6 +342,6 @@ function initProfile() {
   } catch { return; }
   renderAppShell(profile, 'client', page);
   getSettings().catch(() => {});
-  ({ dashboard: initDashboard, agendamentos: initAppointments, perfil: initProfile })[page]?.();
+  ({ dashboard: initDashboard, agendamentos: initAppointments, perfil: initProfile, compras: initPurchases })[page]?.();
 })();
 

@@ -53,10 +53,9 @@ async function renderBusinessHours() {
           <span class="hours-row__day">${WEEKDAYS[d]}</span>
           <label class="switch"><input type="checkbox" data-k="is_open" ${h.is_open ? 'checked' : ''} aria-label="${WEEKDAYS[d]} aberto"><span class="switch__track"></span></label>
           <div class="hours-row__fields">
-            <input class="input" type="time" data-k="open_time" value="${t5(h.open_time)}" aria-label="${WEEKDAYS[d]}: abre">
-            <input class="input" type="time" data-k="close_time" value="${t5(h.close_time)}" aria-label="${WEEKDAYS[d]}: fecha">
-            <input class="input" type="time" data-k="break_start" value="${t5(h.break_start)}" aria-label="${WEEKDAYS[d]}: início do intervalo">
-            <input class="input" type="time" data-k="break_end" value="${t5(h.break_end)}" aria-label="${WEEKDAYS[d]}: fim do intervalo">
+            ${[['open_time', 'Abre', 'abre'], ['close_time', 'Fecha', 'fecha'], ['break_start', 'Intervalo início', 'início do intervalo'], ['break_end', 'Intervalo fim', 'fim do intervalo']].map(([k, label, aria]) => `
+            <label class="hours-field"><span class="hours-field__label" aria-hidden="true">${label}</span>
+              <input class="input" type="time" data-k="${k}" value="${t5(h[k])}" aria-label="${WEEKDAYS[d]}: ${aria}"></label>`).join('')}
           </div></div>`;
       }).join('')}
         <div style="margin-top:var(--space-4)"><button class="btn" type="submit">Salvar horários</button></div>
@@ -207,9 +206,9 @@ function renderPolicies() {
 function renderPayments() {
   const el = document.getElementById('tp-pagamentos');
   settingsForm(el, [
-    { name: 'payment_provider', label: 'Processador de pagamentos', type: 'select', full: true, required: true, options: [
-      { value: 'sandbox', label: 'Modo de teste (simulação, sem cobrança)' }, { value: 'mercadopago', label: 'Mercado Pago (produção)' }] },
-    { name: 'warn', type: 'html', full: true, html: `<div class="alert alert--warning">${icon('alert')}<p>Antes de ativar o Mercado Pago, publique as Edge Functions <code>create-payment</code> e <code>payment-webhook</code> e cadastre o token nos Secrets do Supabase (veja o README). As chaves do gateway nunca ficam no site.</p></div>` },
+    { name: 'payment_provider', label: 'Pagamento online', type: 'select', full: true, required: true, options: [
+      { value: 'disabled', label: 'Desligado (somente pagamento no estúdio)' }, { value: 'mercadopago', label: 'Mercado Pago (Checkout Pro)' }] },
+    { name: 'warn', type: 'html', full: true, html: `<div class="alert alert--warning">${icon('alert')}<div><p>Antes de ligar o Mercado Pago: publique as Edge Functions de pagamento, cadastre as credenciais nos <strong>Secrets</strong> do Supabase e configure o Webhook no painel do Mercado Pago (guia em <code>docs/PAGAMENTOS-MERCADO-PAGO.md</code>).</p><p>As credenciais nunca ficam no site. O ambiente (teste ou produção) é definido pela variável <code>MERCADOPAGO_ENV</code>.</p></div></div>` },
     { name: 'on_site_payment_enabled', label: 'Aceitar pagamento no estúdio (quando o procedimento permitir)', type: 'checkbox' },
     { name: 'payment_hold_minutes', label: 'Tempo para concluir o pagamento online (min)', type: 'number', min: 5, max: 120, required: true, hint: 'Depois disso a reserva expira e o horário volta a ficar livre.' },
   ]);
@@ -221,7 +220,7 @@ async function renderContact() {
   const form = settingsForm(el, [
     { name: 'business_name', label: 'Nome do negócio', required: true },
     { name: 'phone', label: 'Telefone exibido' },
-    { name: 'whatsapp', label: 'WhatsApp (com DDI e DDD, só números)', placeholder: '5511999999999' },
+    { name: 'whatsapp', label: 'WhatsApp (com DDI e DDD, só números)', placeholder: '5511960978246' },
     { name: 'instagram', label: 'Instagram (sem @)' },
     { name: 'email', label: 'E-mail de contato', type: 'email' },
     { name: 'maps_url', label: 'Link do Google Maps', type: 'url' },

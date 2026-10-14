@@ -8,8 +8,14 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 /** false enquanto js/config.js ainda tiver os valores de exemplo. */
 export const supabaseReady = !SUPABASE_URL.includes('SEU-PROJETO') && !SUPABASE_ANON_KEY.startsWith('SUA-');
 
+/**
+ * Aceita a URL mesmo se colada com sufixos do painel (ex.: ".../rest/v1/" do "RESTful endpoint").
+ * O cliente precisa só da raiz: https://<ref>.supabase.co
+ */
+const PROJECT_URL = SUPABASE_URL.trim().replace(/\/(rest|auth)\/v1\/?$/i, '').replace(/\/+$/, '');
+
 export const supabase = createClient(
-  supabaseReady ? SUPABASE_URL : 'https://placeholder.supabase.co',
+  supabaseReady ? PROJECT_URL : 'https://placeholder.supabase.co',
   supabaseReady ? SUPABASE_ANON_KEY : 'placeholder-anon-key',
   {
     auth: {

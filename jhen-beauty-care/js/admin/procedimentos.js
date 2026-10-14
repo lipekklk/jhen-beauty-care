@@ -59,7 +59,7 @@ async function edit(s = null) {
     values: s || { is_active: true, allow_on_site: true, payment_mode: 'full', sort_order: 0 },
     fields: [
       { name: 'image', type: 'html', full: true, html: `
-        <div style="display:flex;gap:var(--space-4);align-items:center">
+        <div class="media-field">
           <div class="img-preview" id="svc-preview">${imageUrl ? `<img src="${esc(imageUrl)}" alt="">` : ''}</div>
           <div class="stack"><label class="btn btn--outline btn--sm">${icon('image')} Escolher imagem<input type="file" id="svc-image" accept="image/jpeg,image/png,image/webp" class="sr-only"></label>
           <button type="button" class="link-btn" id="svc-image-remove">Remover imagem</button>

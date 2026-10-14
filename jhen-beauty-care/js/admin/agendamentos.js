@@ -132,8 +132,8 @@ function createAppointment() {
         <option value="">Selecione…</option>${services.map((s) => `<option value="${s.id}">${esc(s.name)} · ${fmtMoney(s.price)}</option>`).join('')}</select></div>
       <div class="field"><label for="nw-employee">Profissional</label><select class="select" id="nw-employee"><option value="">Sem preferência</option></select></div>
       <div class="field"><label for="nw-method">Pagamento</label><select class="select" id="nw-method">
-        ${Object.entries(METHOD_LABELS).map(([k, l]) => `<option value="${k}" ${k === 'on_site' ? 'selected' : ''}>${l}</option>`).join('')}</select>
-        <span class="hint">PIX/cartão geram cobrança pendente para a cliente pagar na área dela.</span></div>
+        ${['on_site', 'online'].map((k) => `<option value="${k}" ${k === 'on_site' ? 'selected' : ''}>${k === 'online' ? 'Online (Mercado Pago)' : METHOD_LABELS[k]}</option>`).join('')}</select>
+        <span class="hint">Online gera uma reserva aguardando pagamento: a cliente paga pelo Mercado Pago em "Minhas compras".</span></div>
     </div>
     <div id="nw-picker"><p class="muted">Escolha o procedimento para ver os horários.</p></div>
     <div class="field"><label for="nw-notes">Observações</label><textarea class="textarea" id="nw-notes" maxlength="500"></textarea></div>`;

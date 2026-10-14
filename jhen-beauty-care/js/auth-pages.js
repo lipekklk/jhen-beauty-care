@@ -2,19 +2,50 @@
  * Telas de login, cadastro, recuperação e redefinição de senha.
  */
 import { supabase, supabaseReady } from './supabase.js';
-import { signIn, signUp, sendPasswordReset, updatePassword, getSession, getProfile, dashboardUrl, safeNext } from './auth.js';
+import {
+  signIn, signUp, sendPasswordReset, updatePassword, getSession, getProfile, dashboardUrl, safeNext, resendConfirmation,
+} from './auth.js';
 import { isValidEmail, isValidPhone, maskPhone, passwordStrength, errorMessage, getParam, url, esc } from './utils.js';
 import { toast, validate, withLoading, bindPasswordToggles, setFieldError } from './ui.js';
 
 const page = document.body.dataset.page;
 const alertBox = document.getElementById('form-alert');
 
-function showAlert(type, message) {
+/** Mostra um aviso no topo do formulário. actionsHTML: botões/links extras (já escapados). */
+function showAlert(type, message, actionsHTML = '') {
   if (!alertBox) return toast({ type, message });
   alertBox.className = `alert alert--${type}`;
-  alertBox.innerHTML = `<p>${esc(message)}</p>`;
+  alertBox.innerHTML = `<div><p>${esc(message)}</p>${actionsHTML ? `<p style="margin-top:var(--space-2)">${actionsHTML}</p>` : ''}</div>`;
   alertBox.hidden = false;
   alertBox.setAttribute('role', type === 'error' ? 'alert' : 'status');
+  return alertBox;
+}
+
+/** Aviso com botão "Reenviar e-mail de confirmação" para o endereço informado. */
+function showResend(type, message, email) {
+  const box = showAlert(type, message, '<button type="button" class="link-btn" data-resend>Reenviar e-mail de confirmação</button>');
+  box.querySelector('[data-resend]').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const target = email || document.getElementById('email')?.value || '';
+    if (!isValidEmail(target)) { showAlert('error', 'Informe seu e-mail no campo acima para reenviar a confirmação.'); return; }
+    await withLoading(btn, async () => {
+      try {
+        await resendConfirmation(target);
+        showAlert('success', `Enviamos um novo link de confirmação para ${target}. Verifique também a caixa de spam. O link vale por 24 horas.`);
+      } catch (err) {
+        showAlert('error', errorMessage(err, 'Não foi possível reenviar agora. Aguarde alguns minutos e tente de novo.'));
+      }
+    }, 'Enviando…');
+  });
+}
+
+/** Erros que o Supabase devolve no #hash do link de e-mail (ex.: link expirado ou já usado). */
+function linkErrorFromHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const code = h.get('error_code') || h.get('error');
+  if (!code) return null;
+  history.replaceState(null, '', location.pathname + location.search.replace(/[?&]confirmado=1/, ''));
+  return code;
 }
 
 const passwordRule = (v) => (v.length < 8 ? 'Use pelo menos 8 caracteres.' : '');
@@ -43,12 +74,25 @@ async function redirectIfLogged() {
 
 /* ------------------------------------------------------------------ login */
 function initLogin() {
-  redirectIfLogged();
-  if (getParam('expirada')) showAlert('warning', 'Sua sessão expirou. Entre novamente para continuar.');
-  if (getParam('saiu')) showAlert('info', 'Você saiu da sua conta.');
-  if (getParam('confirmado')) showAlert('success', 'E-mail confirmado. Agora é só entrar.');
-  if (getParam('cadastro')) showAlert('success', 'Conta criada! Confirme seu e-mail pelo link que enviamos e depois entre aqui.');
-  if (getParam('next')?.includes('agendamento')) showAlert('info', 'Entre ou crie sua conta para concluir o agendamento.');
+  const linkError = linkErrorFromHash();
+  const registeredEmail = getParam('email') || '';
+  const emailInput = document.getElementById('email');
+  if (registeredEmail && emailInput) emailInput.value = registeredEmail;
+
+  if (linkError) {
+    showResend('error', linkError === 'otp_expired'
+      ? 'O link de confirmação expirou ou já foi usado. Peça um novo abaixo.'
+      : 'Não foi possível confirmar seu e-mail por este link. Peça um novo abaixo.', registeredEmail);
+  } else {
+    redirectIfLogged(); // link de confirmação válido já cria a sessão: vai direto para a área
+    if (getParam('expirada')) showAlert('warning', 'Sua sessão expirou. Entre novamente para continuar.');
+    if (getParam('saiu')) showAlert('info', 'Você saiu da sua conta.');
+    if (getParam('confirmado')) showAlert('success', 'E-mail confirmado. Agora é só entrar.');
+    if (getParam('cadastro')) {
+      showResend('success', `Conta criada! Enviamos um link de confirmação para ${registeredEmail || 'o seu e-mail'}. Clique nele e depois entre aqui. Não chegou em alguns minutos? Veja o spam ou reenvie.`, registeredEmail);
+    }
+    if (getParam('next')?.includes('agendamento') && !getParam('cadastro')) showAlert('info', 'Entre ou crie sua conta para concluir o agendamento.');
+  }
 
   const signupLink = document.getElementById('signup-link');
   if (signupLink && getParam('next')) signupLink.href = url(`cadastro.html?next=${encodeURIComponent(getParam('next'))}`);
@@ -64,10 +108,23 @@ function initLogin() {
     await withLoading(form.querySelector('[type="submit"]'), async () => {
       try {
         await signIn(form.email.value, form.password.value);
+      } catch (err) {
+        console.error('[login] signInWithPassword', err);
+        if (/email not confirmed/i.test(err.message) || err.code === 'email_not_confirmed') {
+          showResend('warning', 'Seu e-mail ainda não foi confirmado. Clique no link que enviamos no cadastro ou peça um novo.', form.email.value);
+        } else {
+          showAlert('error', errorMessage(err, 'Não foi possível entrar. Tente novamente.'),
+            /invalid login credentials/i.test(err.message) ? `<a href="${url('recuperar-senha.html')}">Esqueci minha senha</a>` : '');
+        }
+        return;
+      }
+      try {
         const profile = await getProfile(true);
         location.href = safeNext(getParam('next')) || dashboardUrl(profile.role);
       } catch (err) {
-        showAlert('error', errorMessage(err, 'Não foi possível entrar. Tente novamente.'));
+        // login no Auth funcionou, mas o perfil não pôde ser lido/criado
+        console.error('[login] perfil', err);
+        showAlert('error', errorMessage(err, 'Você entrou, mas não conseguimos carregar seu cadastro. Tente novamente em instantes.'));
       }
     }, 'Entrando…');
   });
@@ -100,13 +157,23 @@ function initSignup() {
         });
         const next = safeNext(getParam('next'));
         if (data.session) {
+          // confirmação de e-mail desligada no Supabase: a conta já entra logada
           toast({ type: 'success', message: 'Conta criada! Bem-vinda.' });
           location.href = next || dashboardUrl('client');
         } else {
-          location.href = url(`login.html?cadastro=1${next ? `&next=${encodeURIComponent(getParam('next'))}` : ''}`);
+          const email = form.email.value.trim().toLowerCase();
+          location.href = url(`login.html?cadastro=1&email=${encodeURIComponent(email)}${next ? `&next=${encodeURIComponent(getParam('next'))}` : ''}`);
         }
       } catch (err) {
-        if (/already registered/i.test(err.message)) setFieldError(form.email, 'Este e-mail já tem cadastro.');
+        console.error('[cadastro] signUp', err);
+        if (/USER_ALREADY_REGISTERED|already registered/i.test(err.message)) {
+          setFieldError(form.email, 'Este e-mail já tem cadastro.');
+          const email = encodeURIComponent(form.email.value.trim().toLowerCase());
+          showAlert('warning', 'Já existe uma conta com este e-mail, por isso não criamos outra nem enviamos e-mail.',
+            `<a href="${url(`login.html?email=${email}`)}">Entrar</a> · <a href="${url('recuperar-senha.html')}">Recuperar senha</a> · <button type="button" class="link-btn" data-resend-existing>Reenviar confirmação</button>`);
+          alertBox.querySelector('[data-resend-existing]')?.addEventListener('click', () => showResend('info', 'Se a conta ainda não foi confirmada, enviaremos um novo link.', form.email.value));
+          return;
+        }
         showAlert('error', errorMessage(err, 'Não foi possível criar sua conta.'));
       }
     }, 'Criando conta…');

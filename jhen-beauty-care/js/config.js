@@ -7,8 +7,9 @@
  *
  * Onde encontrar: Supabase → Project Settings → API (Project URL e anon/public key).
  */
- export const SUPABASE_URL = 'https://wkdiguedkhiubmdlwpce.supabase.co';
- export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrZGlndWVka2hpdWJtZGx3cGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0MTA3MzEsImV4cCI6MjEwNjk4NjczMX0.QaMB6_tnY459EZIP1u1vPjmr4bjfoLLkmVpMtZB7DI4';
+// Use a "Project URL" (sem /rest/v1 no final), ex.: https://abcdefghij.supabase.co
+export const SUPABASE_URL = 'https://wkdiguedkhiubmdlwpce.supabase.co/rest/v1/';
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrZGlndWVka2hpdWJtZGx3cGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0MTA3MzEsImV4cCI6MjEwNjk4NjczMX0.QaMB6_tnY459EZIP1u1vPjmr4bjfoLLkmVpMtZB7DI4';
 
 /** Fuso horário padrão do negócio (o valor oficial fica em settings.timezone no banco). */
 export const DEFAULT_TIMEZONE = 'America/Sao_Paulo';

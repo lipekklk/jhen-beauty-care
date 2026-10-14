@@ -54,7 +54,8 @@ site/
 │   ├── layout.js         cabeçalho, rodapé e menu das áreas logadas
 │   ├── calendar.js       calendário com disponibilidade real
 │   ├── agendamento.js    fluxo de agendamento
-│   ├── pagamentos.js     pagamento (sandbox e Mercado Pago)
+│   ├── pagamentos.js     checkout Mercado Pago (pede o link ao servidor; nunca toca em cartão)
+│   ├── pagamento-retorno.js  página de retorno do Mercado Pago (pagamento.html)
 │   ├── appointment-actions.js  detalhes, cancelar, remarcar, pagar, avaliar
 │   ├── home.js · auth-pages.js · cliente.js · funcionario.js · charts.js
 │   └── admin/            admin.js (base) + um módulo por página
@@ -67,8 +68,10 @@ site/
 │   ├── seed.sql          dados de TESTE (opcional)
 │   ├── seed_cleanup.sql  remove os dados de teste
 │   ├── cron.sql          tarefas agendadas (opcional)
-│   └── functions/        Edge Functions: create-payment, payment-webhook,
-│                         invite-employee, send-notifications
+│   ├── migrations/       atualização de bancos já instalados (ex.: 20261012_mercadopago.sql)
+│   └── functions/        Edge Functions: create-payment, payment-webhook, sync-payment,
+│                         refund-payment, invite-employee, send-notifications (+ .env.example)
+├── docs/PAGAMENTOS-MERCADO-PAGO.md   guia completo da integração de pagamentos
 ├── vercel.json · _headers   cabeçalhos de segurança (CSP etc.)
 └── README.md
 ```
@@ -135,13 +138,13 @@ As fontes vêm do Google Fonts. Para hospedá-las localmente (melhor para LGPD),
 ## 3. Arquitetura e segurança
 
 - **Sem segredo no navegador.** O front só tem a URL e a chave pública (`anon`). Tokens do gateway e a `service_role` ficam nos Secrets das Edge Functions.
-- **RLS em todas as 16 tabelas.** A cliente vê só os próprios dados, a profissional só os próprios atendimentos (sem dados financeiros) e a administradora gerencia tudo.
+- **RLS em todas as 18 tabelas.** A cliente vê só os próprios dados, a profissional só os próprios atendimentos (sem dados financeiros) e a administradora gerencia tudo.
 - **Escritas sensíveis só via funções do banco** (`security definer`), que revalidam tudo no servidor: `book_appointment`, `cancel_appointment`, `reschedule_appointment`, `update_appointment_status`. Cliente e profissional não conseguem inserir ou alterar agendamentos direto na tabela.
 - **Anti-conflito à prova de corrida:** `appointments` tem uma *exclusion constraint* (`btree_gist`) que impede dois atendimentos sobrepostos da mesma profissional. Se dois clientes confirmarem o mesmo horário ao mesmo tempo, o banco aceita um e o outro recebe "Este horário acabou de ser reservado por outro cliente."
 - **A disponibilidade considera** duração do procedimento, horário de funcionamento, horários especiais, intervalo do estúdio e da profissional, jornada de cada profissional, feriados, folgas, férias, bloqueios de dia e de horário, agendamentos existentes, antecedência mínima e máxima.
 - **Reserva com prazo:** agendamento com pagamento online fica como "Aguardando pagamento" por `payment_hold_minutes` (padrão 15). Se não for pago, o horário volta a ficar livre.
 - **Papel nunca vem do cliente:** todo cadastro nasce `client`, e um trigger impede a usuária de alterar o próprio papel, bloqueio ou e-mail.
-- **Pagamentos:** a tabela guarda só ID e status do gateway, valor, método, data, cliente e agendamento. Nenhum dado de cartão passa pelo site (o cartão é digitado no checkout do Mercado Pago).
+- **Pagamentos:** o cartão é digitado só no Checkout Pro do Mercado Pago. O banco guarda IDs e status do Mercado Pago, valor, tipo (crédito, débito, Pix), bandeira e os 4 últimos dígitos, nunca número completo, CVV ou validade. Status de pagamento online só muda pelas Edge Functions depois de consultar a API do Mercado Pago (um trigger bloqueia alterações feitas pela API, inclusive pela administradora).
 - **Cabeçalhos HTTP:** `vercel.json` e `_headers` aplicam Content-Security-Policy, HSTS, nosniff e Referrer-Policy.
 
 ---
@@ -149,7 +152,7 @@ As fontes vêm do Google Fonts. Para hospedá-las localmente (melhor para LGPD),
 ## 4. Configurar o Supabase (passo a passo)
 
 1. **Crie o projeto** em [supabase.com](https://supabase.com) → *New project*. Escolha a região **South America (São Paulo)** e guarde a senha do banco.
-2. **Execute o SQL:** *SQL Editor* → *New query* → cole todo o conteúdo de `supabase/schema.sql` → *Run*. O script é idempotente, então pode ser executado de novo depois de alterações.
+2. **Execute o SQL:** *SQL Editor* → *New query* → cole todo o conteúdo de `supabase/schema.sql` → *Run*. O script é idempotente, então pode ser executado de novo depois de alterações. **Banco já instalado com a versão anterior?** Rode também `supabase/migrations/20261012_mercadopago.sql` (uma vez).
 3. **(Opcional) Dados de teste:** execute `supabase/seed.sql` para ter procedimentos, profissionais e clientes fictícias (seção 10). Antes de publicar, rode `supabase/seed_cleanup.sql`.
 4. **Chaves públicas:** *Project Settings → API*. Copie a **Project URL** e a **anon public key** para `js/config.js`:
 
@@ -186,6 +189,27 @@ Em *Authentication → Emails (Templates)*, traduza os modelos para português. 
 
 **Troca de e-mail** usa o fluxo seguro do Supabase: a troca só acontece depois da confirmação por link.
 
+### Solução de problemas de login e cadastro
+
+| Sintoma | Causa provável | O que fazer |
+|---|---|---|
+| Todas as chamadas dão 404 (console do navegador) | `SUPABASE_URL` com `/rest/v1` no final | Use a **Project URL** pura: `https://<ref>.supabase.co`. O `js/supabase.js` já remove o sufixo, mas confira o `config.js`. |
+| "Já existe uma conta com este e-mail" no cadastro | E-mail já cadastrado **e confirmado**. O Supabase responde "sucesso" sem criar nada e sem enviar e-mail; o site detecta pelo `identities: []` | Entrar ou usar "Esqueci minha senha". |
+| Cadastro repetido de conta **não confirmada** | O Supabase reenvia o link de confirmação | Abrir o e-mail mais recente (os anteriores podem expirar). |
+| "Seu e-mail ainda não foi confirmado" | A conta existe, mas o link não foi clicado | Botão **Reenviar e-mail de confirmação** na tela de login (limite: 1 envio por minuto por e-mail). |
+| Clicar no link do e-mail abre uma página que não existe | A URL do site não está em **Redirect URLs**, então o Supabase manda para a **Site URL** (padrão `http://localhost:3000`) | Ver os passos abaixo. A conta é confirmada mesmo assim; basta entrar pelo site. |
+| Login aceito, mas "não conseguimos carregar seu cadastro" | Conta sem linha em `profiles` (perfil apagado manualmente) | O site recria sozinho via `ensure_profile()`. Para corrigir todas de uma vez, reexecute o `schema.sql` (tem backfill). |
+| E-mail não chega | Limite do servidor de e-mail padrão do Supabase | Configure SMTP próprio (abaixo) e confira a caixa de spam. Os envios aparecem em *Authentication → Logs*. |
+
+**Configurações obrigatórias no painel** (*Authentication → URL Configuration*):
+
+- **Site URL:** o endereço onde o site roda. Em desenvolvimento com Live Server: `http://127.0.0.1:5500`. Em produção: o domínio.
+- **Redirect URLs:** adicione **todas** as origens usadas, com `/**`: `http://127.0.0.1:5500/**`, `http://localhost:5500/**` e o domínio de produção.
+
+**E-mail em produção** (*Authentication → SMTP Settings*): o servidor padrão do Supabase serve só para testes e tem limite de poucos envios por hora. Ative **Custom SMTP** com um provedor como Resend, Brevo ou Amazon SES (host, porta, usuário, senha e remetente). Depois ajuste o limite em *Authentication → Rate Limits*.
+
+**Para diagnosticar:** abra o console do navegador (F12). O site registra `[login]` e `[cadastro]` com o erro exato devolvido pelo Supabase.
+
 ---
 
 ## 6. Primeiro administrador, equipe, procedimentos e horários
@@ -218,7 +242,7 @@ Para convidar por e-mail quem ainda não tem conta, publique a função `invite-
 - **Feriados e datas especiais:** feriados fecham o dia; datas especiais substituem o horário normal.
 - **Folgas e bloqueios:** folgas, férias e bloqueios de dias (por profissional ou para todas) e de faixas de horário.
 - **Políticas:** prazo de cancelamento gratuito, taxa de cancelamento tardio (%), perda do sinal, reembolso, prazo e limite de remarcações, texto exibido para a cliente, intervalo entre horários, antecedência mínima e máxima.
-- **Pagamentos:** modo de teste ou Mercado Pago, pagamento no estúdio e tempo de reserva.
+- **Pagamentos:** pagamento online desligado ou Mercado Pago, pagamento no estúdio e tempo de reserva.
 - **Contato e avisos:** WhatsApp, Instagram, e-mail, endereço, mapa e canais de notificação.
 - **Galeria e depoimentos:** fotos de resultados e moderação das avaliações.
 
@@ -226,40 +250,15 @@ Para convidar por e-mail quem ainda não tem conta, publique a função `invite-
 
 ## 7. Pagamentos (Mercado Pago)
 
-O site vem em **modo de teste (sandbox)**: o passo de pagamento mostra botões "Simular pagamento aprovado" e "Simular falha", sem cobrança. O modo só funciona enquanto `settings.payment_provider = 'sandbox'`.
+Pagamento online pelo **Checkout Pro** do Mercado Pago (cartão de crédito, débito e Pix; sem boleto). O guia completo, com configuração, testes, webhook, estornos e checklist de produção, está em **[`docs/PAGAMENTOS-MERCADO-PAGO.md`](docs/PAGAMENTOS-MERCADO-PAGO.md)**.
 
-### Ativar o Mercado Pago
-1. Crie uma aplicação em [mercadopago.com.br/developers](https://www.mercadopago.com.br/developers) → *Suas integrações*. Copie o **Access Token** (comece pelo de *teste*).
-2. Instale a [Supabase CLI](https://supabase.com/docs/guides/cli) e vincule o projeto:
-   ```bash
-   supabase login
-   supabase link --project-ref <PROJECT_REF>
-   ```
-3. Cadastre os segredos, que **ficam só no servidor**:
-   ```bash
-   supabase secrets set MP_ACCESS_TOKEN=APP_USR-... \
-                        MP_WEBHOOK_SECRET=<assinatura secreta do passo 5> \
-                        SITE_URL=https://jhenbeautycare.com.br \
-                        ALLOWED_ORIGINS=https://jhenbeautycare.com.br
-   ```
-4. Publique as funções:
-   ```bash
-   supabase functions deploy create-payment
-   supabase functions deploy payment-webhook --no-verify-jwt
-   supabase functions deploy invite-employee        # opcional
-   ```
-5. No painel do Mercado Pago → *Webhooks*: URL `https://<PROJECT_REF>.supabase.co/functions/v1/payment-webhook`, evento **Pagamentos**. Copie a **assinatura secreta** gerada para `MP_WEBHOOK_SECRET` (passo 3).
-6. No site: *Admin → Configurações → Pagamentos → Mercado Pago (produção)*.
+Resumo:
+1. O site vem com o pagamento online **desligado** (`payment_provider = 'disabled'`): só "pagar no estúdio" aparece.
+2. Cadastre os Secrets das Edge Functions (`supabase/functions/.env.example` lista todos) e publique `create-payment`, `sync-payment`, `refund-payment` e `payment-webhook` (este com `--no-verify-jwt`).
+3. Configure o Webhook no painel do Mercado Pago (evento *Pagamentos*) e copie a assinatura secreta para `MERCADOPAGO_WEBHOOK_SECRET`.
+4. Em *Admin → Configurações → Pagamentos*, escolha **Mercado Pago (Checkout Pro)**.
 
-### Como funciona
-- **PIX:** `create-payment` cria o pagamento com o valor lido do banco e mostra QR Code e "copia e cola". O site consulta o status a cada 4 segundos.
-- **Cartão:** a cliente vai para o **Checkout Pro** do Mercado Pago, digita o cartão lá e volta para "Meus agendamentos".
-- **Confirmação oficial:** `payment-webhook` valida a assinatura `x-signature`, consulta o pagamento na API do Mercado Pago (não confia no corpo da notificação), confere se o valor pago cobre o cobrado e atualiza o banco. O trigger confirma o agendamento e notifica a cliente.
-- **Sinal:** procedimentos com cobrança por sinal cobram só o sinal online; o restante aparece como pendente para pagar no estúdio.
-- **Pagamento no estúdio:** a administradora dá baixa em *Pagamentos → Marcar como pago*.
-- **Estornos:** cancelamentos com reembolso deixam o pagamento como "Estorno pendente". Faça o estorno no painel do Mercado Pago e clique em *Registrar estorno*.
-
-Para usar Stripe ou outro gateway, mantenha a mesma interface: uma função que cria a cobrança e um webhook que chama `public.apply_payment_update(...)`.
+Fluxo: a cliente agenda → o horário fica reservado → `create-payment` cria a preferência com o **valor do banco** → a cliente paga no ambiente do Mercado Pago → o **webhook assinado** consulta o pagamento na API e só então confirma o horário. A página de retorno (`pagamento.html`) e *Minhas compras* mostram o status gravado no servidor, nunca o que vem na URL.
 
 ---
 
@@ -300,7 +299,7 @@ Depois de publicar:
 - [ ] Contato, endereço, mapa e horários em *Configurações*
 - [ ] Procedimentos, preços e profissionais revisados
 - [ ] SMTP próprio e templates de e-mail em português
-- [ ] Mercado Pago ativado e webhook testado, sandbox desligado
+- [ ] Mercado Pago: checklist de produção do `docs/PAGAMENTOS-MERCADO-PAGO.md` concluído
 - [ ] Fotos reais na galeria
 - [ ] `cron.sql` executado (lembretes e limpeza)
 
@@ -334,7 +333,10 @@ Ambiente de teste local equivalente ao Supabase: Postgres 16, **GoTrue** (o serv
 | Corrida: 8 clientes confirmando o mesmo horário ao mesmo tempo | 1 reserva, 7 recusadas com mensagem clara |
 | E2E cliente (desktop e celular): navegação, cadastro, agendamento com pagamento recusado e aprovado, remarcar, cancelar, avaliar, perfil, recuperação de senha por e-mail | 37/37 |
 | E2E profissional e administradora: agenda, status, pedido de alteração e todos os cadastros do painel | 36/36 |
-| Edge Functions de pagamento rodando no Deno contra Mercado Pago simulado: PIX, cartão, assinatura do webhook, valor divergente, idempotência | 22/22 |
+| Mercado Pago (Edge Functions no Deno + Mercado Pago simulado): RLS e permissões, manipulação de valor/status/usuário, assinatura do webhook, idempotência, aprovado, Pix pendente, recusado, em análise, cancelado, estorno total e parcial, chargeback, duplicidade, valor divergente, aprovação tardia, limite de requisições | 111/111 |
+| E2E Mercado Pago (Chromium): agendar e pagar, retorno aprovado/pendente/recusado/cancelado, URL forjada, Minhas compras, celular, estorno pela administradora | 30/30 |
+| Responsividade: 37 telas/estados (público, cliente, profissional, admin, modais, menu aberto) em 25 larguras de 320 a 1920 px — rolagem horizontal, elementos fora da tela, texto estourando, alvos de toque, sobreposição | sem rolagem horizontal em nenhuma largura |
+| Menu hambúrguer e gaveta das áreas logadas: abrir/fechar, Esc, foco, teclado, âncoras, redimensionar, celular deitado | 143/143 |
 
 Problemas encontrados e corrigidos durante os testes:
 - Falha de permissão no cancelamento (comparação com `NULL` no SQL) que permitiria a uma cliente cancelar o agendamento de outra.

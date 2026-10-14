@@ -5,7 +5,7 @@
 import { supabase } from './supabase.js';
 import { renderPublicHeader, renderPublicFooter, hoursTableHTML } from './layout.js';
 import { getActiveServices, getSettings, getBusinessHours } from './data.js';
-import { esc, url, fmtMoney, fmtDuration, waLink, unwrap, errorMessage, testBadge } from './utils.js';
+import { esc, url, fmtMoney, fmtDuration, waLink, igLink, unwrap, errorMessage, testBadge } from './utils.js';
 import { emptyHTML, errorHTML, skeletonHTML } from './ui.js';
 import { icon } from './icons.js';
 
@@ -71,7 +71,7 @@ async function renderGallery(container) {
           <div>
             <h3>Resultados reais, em breve aqui</h3>
             <p class="muted">As fotos de antes e depois das nossas clientes serão publicadas nesta galeria.${s.instagram ? ' Enquanto isso, acompanhe o dia a dia do estúdio no Instagram.' : ''}</p>
-            ${s.instagram ? `<a class="btn btn--outline btn--sm" href="https://instagram.com/${encodeURIComponent(s.instagram)}" target="_blank" rel="noopener">${icon('instagram')} @${esc(s.instagram)}</a>` : ''}
+            ${s.instagram ? `<a class="btn btn--outline btn--sm" href="${igLink(s.instagram)}" target="_blank" rel="noopener">${icon('instagram')} @${esc(s.instagram)}</a>` : ''}
           </div>
         </div>`;
       return;
@@ -109,9 +109,9 @@ async function renderContact(listEl, hoursEl) {
     const [s, hours] = await Promise.all([getSettings(), getBusinessHours()]);
     const items = [];
     if (s.whatsapp) items.push(['whatsapp', 'WhatsApp', `<a href="${waLink(s.whatsapp, 'Olá! Gostaria de agendar um horário.')}" target="_blank" rel="noopener">${esc(s.phone || s.whatsapp)}</a>`]);
-    if (s.instagram) items.push(['instagram', 'Instagram', `<a href="https://www.instagram.com/jhen.beautycare/${encodeURIComponent(s.instagram)}" target="_blank" rel="noopener">@${esc(s.instagram)}</a>`]);
+    if (s.instagram) items.push(['instagram', 'Instagram', `<a href="${igLink(s.instagram)}" target="_blank" rel="noopener">@${esc(s.instagram)}</a>`]);
     if (s.address) items.push(['pin', 'Endereço', `${esc(s.address)}${s.maps_url ? `<br><a href="${esc(s.maps_url)}" target="_blank" rel="noopener">Abrir no mapa</a>` : ''}`]);
-    if (s.email) items.push(['mail', 'E-mail', `<a href="mailto:jhenbeautycare@gmail.com">jhenbeautycare@gmail.com</a>`]);
+    if (s.email) items.push(['mail', 'E-mail', `<a href="mailto:${esc(s.email)}">${esc(s.email).replace('@', '@<wbr>')}</a>`]);
     listEl.innerHTML = items.length
       ? `<ul class="contact-list">${items.map(([ic, label, value]) => `
           <li><span class="icon-circle">${icon(ic)}</span><div><span class="muted" style="font-size:var(--fs-sm)">${label}</span><br>${value}</div></li>`).join('')}</ul>`

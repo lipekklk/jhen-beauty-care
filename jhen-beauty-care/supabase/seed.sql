@@ -88,11 +88,11 @@ begin
     ('2026-11-20', 'Dia da Consciência Negra'), ('2026-12-25', 'Natal'), ('2027-01-01', 'Confraternização Universal')
   on conflict (date) do nothing;
 
-  -- Contato de exemplo (edite em Admin → Configurações)
+  -- Contato oficial do estúdio (o mesmo do schema.sql; edite em Admin → Configurações)
   update public.settings set
-    whatsapp = '5511900000000', instagram = 'jhenbeautycare', email = 'contato@example.com',
-    phone = '(11) 90000-0000', address = 'Endereço de exemplo, 123 — Sua cidade/UF',
-    maps_url = 'https://www.google.com/maps'
+    whatsapp = '5511960978246', instagram = 'jhen.beautycare', email = 'jhenbeautycare@gmail.com',
+    phone = '(11) 96097-8246', address = 'R. Manoel de Nóbrega, 352 - Maracanã',
+    maps_url = 'https://www.google.com/maps/search/?api=1&query=R.+Manoel+de+N%C3%B3brega%2C+352+-+Maracan%C3%A3'
   where id = 1;
 
   -- Agendamentos de exemplo --------------------------------------------------
@@ -106,9 +106,14 @@ begin
             (d + time '10:00') at time zone tz, (d + time '10:00' + interval '60 min') at time zone tz,
             'completed', case i % 3 when 1 then 60 else 40 end, true)
     returning id into a_id;
-    insert into public.payments (appointment_id, client_id, amount, kind, method, status, provider, provider_payment_id, paid_at, is_test_data)
-    select a_id, client_id, price, 'full', case i % 2 when 0 then 'pix' else 'card' end::public.payment_method,
-           'approved', 'sandbox', 'sbx_seed_' || i, starts_at - interval '2 days', true
+    -- pagamentos fictícios no formato do Mercado Pago (IDs 'teste_*' nunca existem no MP real)
+    insert into public.payments (appointment_id, client_id, amount, kind, method, status, provider, provider_payment_id,
+                                 provider_status, payment_type, payment_method_id, card_last_four, live_mode, paid_at, is_test_data)
+    select a_id, client_id, price, 'full', 'online', 'approved', 'mercadopago', 'teste_' || i, 'approved',
+           case i % 2 when 0 then 'bank_transfer' else 'credit_card' end,
+           case i % 2 when 0 then 'pix' else 'visa' end,
+           case i % 2 when 0 then null else '0000' end,
+           false, starts_at - interval '2 days', true
       from public.appointments where id = a_id;
   end loop;
 
@@ -133,11 +138,13 @@ begin
       (u_dani,   e_ana,    s_design,     (open_days[1] + time '16:00') at time zone tz, (open_days[1] + time '16:40') at time zone tz, 'confirmed', 40,  true),
       (u_elaine, e_ana,    s_henna,      (open_days[2] + time '10:00') at time zone tz, (open_days[2] + time '11:00') at time zone tz, 'scheduled', 60,  true),
       (u_carla,  e_ana,    s_design,     (open_days[3] + time '09:00') at time zone tz, (open_days[3] + time '09:40') at time zone tz, 'scheduled', 40,  true);
-    insert into public.payments (appointment_id, client_id, amount, kind, method, status, provider, provider_payment_id, paid_at, is_test_data)
+    insert into public.payments (appointment_id, client_id, amount, kind, method, status, provider, provider_payment_id,
+                                 provider_status, payment_type, payment_method_id, live_mode, paid_at, is_test_data)
     select a.id, a.client_id,
            case when a.service_id = s_lamination then 40 else a.price end,
            case when a.service_id = s_lamination then 'deposit' else 'full' end::public.payment_mode,
-           'pix', 'approved', 'sandbox', 'sbx_seed_f_' || left(a.id::text, 8), now() - interval '1 day', true
+           'online', 'approved', 'mercadopago', 'teste_f_' || left(a.id::text, 8), 'approved', 'bank_transfer', 'pix',
+           false, now() - interval '1 day', true
       from public.appointments a
      where a.is_test_data and a.status in ('scheduled', 'confirmed');
   end if;

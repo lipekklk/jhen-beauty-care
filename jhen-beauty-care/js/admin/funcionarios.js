@@ -86,7 +86,7 @@ function editEmployee(e) {
     </div>
     <div class="tab-panel" id="tp-dados" role="tabpanel">
       <form class="form" id="emp-form" novalidate>
-        <div style="display:flex;gap:var(--space-4);align-items:center">
+        <div class="media-field">
           <span class="avatar avatar--lg" id="emp-photo">${e.photo_url ? `<img src="${esc(e.photo_url)}" alt="">` : esc(initials(e.display_name))}</span>
           <label class="btn btn--outline btn--sm">${icon('image')} Trocar foto<input type="file" accept="image/jpeg,image/png,image/webp" id="emp-photo-input" class="sr-only"></label>
         </div>

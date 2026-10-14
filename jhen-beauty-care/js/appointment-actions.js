@@ -6,16 +6,20 @@
 import { supabase } from './supabase.js';
 import { cancellationQuote, cancelAppointment, rescheduleAppointment } from './data.js';
 import { createDateTimePicker } from './calendar.js';
-import { processPayment, PAYMENT_RESULT_MESSAGES } from './pagamentos.js';
+import { startCheckout, requestRefund, checkoutErrorMessage } from './pagamentos.js';
 import {
   esc, fmtMoney, fmtDuration, fmtDateLong, fmtTime, fmtDateTime, statusBadge, paymentSummary, paymentBadge,
-  METHOD_LABELS, KIND_LABELS, errorMessage,
+  KIND_LABELS, errorMessage, paymentMethodLabel, url,
 } from './utils.js';
 import { openModal, confirmDialog, toast, withLoading } from './ui.js';
 import { icon } from './icons.js';
 
 export const isUpcoming = (a) => ['pending_payment', 'scheduled', 'confirmed'].includes(a.status) && new Date(a.ends_at) > new Date();
-export const canPay = (a) => a.status === 'pending_payment' && (a.payments || []).some((p) => ['pending', 'rejected'].includes(p.status) && p.method !== 'on_site');
+/** Reserva aguardando pagamento online, ainda dentro do prazo. */
+const payablePayment = (a) => (a.payments || []).find((p) => ['pending', 'rejected'].includes(p.status)
+  && ['online', 'pix', 'card'].includes(p.method)
+  && (!p.checkout_expires_at || new Date(p.checkout_expires_at) > new Date(Date.now() + 60_000)));
+export const canPay = (a) => a.status === 'pending_payment' && Boolean(payablePayment(a));
 
 /* ------------------------------------------------------------------ detalhes */
 export function showDetails(a, { onAction } = {}) {
@@ -36,8 +40,9 @@ export function showDetails(a, { onAction } = {}) {
     ${(a.payments || []).length ? `
       <h3 style="font-size:var(--fs-lg);margin-top:var(--space-5)">Pagamentos</h3>
       <ul class="notif-list">${a.payments.map((p) => `
-        <li class="notif"><div><strong>${fmtMoney(p.amount)} · ${METHOD_LABELS[p.method]} · ${KIND_LABELS[p.kind]}</strong>
-        <p>${paymentBadge(p.status)} ${p.paid_at ? `pago em ${fmtDateTime(p.paid_at)}` : ''}</p></div></li>`).join('')}</ul>` : ''}`;
+        <li class="notif"><div><strong>${fmtMoney(p.amount)} · ${esc(paymentMethodLabel(p))} · ${KIND_LABELS[p.kind]}</strong>
+        <p>${paymentBadge(p.status)} ${p.paid_at ? `pago em ${fmtDateTime(p.paid_at)}` : ''}
+        ${p.provider_payment_id && p.method !== 'on_site' ? `<br><span class="muted">Transação Mercado Pago nº ${esc(p.provider_payment_id)}</span>` : ''}</p></div></li>`).join('')}</ul>` : ''}`;
   const footer = document.createElement('div');
   footer.style.display = 'contents';
   const buttons = [];
@@ -96,10 +101,21 @@ export async function cancelFlow(a, { staff = false } = {}) {
     footer.querySelector('[data-act="no"]').addEventListener('click', () => m.close());
     footer.querySelector('[data-act="yes"]').addEventListener('click', (e) => withLoading(e.currentTarget, async () => {
       try {
-        await cancelAppointment(a.id, body.querySelector('#cancel-reason').value);
-        toast({ type: 'success', message: 'Agendamento cancelado.' });
+        const result = await cancelAppointment(a.id, body.querySelector('#cancel-reason').value);
         changed = true;
         m.close();
+        // Estorno online: o valor foi calculado pelo banco; o servidor pede o estorno ao Mercado Pago
+        const onlinePaid = (a.payments || []).find((p) => p.status === 'approved' && p.method !== 'on_site' && p.provider === 'mercadopago');
+        if (Number(result?.refund_amount) > 0 && onlinePaid) {
+          try {
+            await requestRefund(onlinePaid.id);
+            toast({ type: 'success', message: `Agendamento cancelado. Estorno de ${fmtMoney(result.refund_amount)} solicitado ao Mercado Pago.` });
+          } catch {
+            toast({ type: 'warning', message: 'Agendamento cancelado. O estorno será processado pelo estúdio em breve.', timeout: 8000 });
+          }
+        } else {
+          toast({ type: 'success', message: 'Agendamento cancelado.' });
+        }
       } catch (err) {
         toast({ type: 'error', message: errorMessage(err) });
       }
@@ -144,15 +160,21 @@ export function rescheduleFlow(a) {
 }
 
 /* ------------------------------------------------------------------ pagar pendente */
-export async function payFlow(a) {
-  const p = (a.payments || []).find((x) => ['pending', 'rejected'].includes(x.status) && x.method !== 'on_site');
+/** Retoma o pagamento de uma reserva no checkout do Mercado Pago. */
+export async function payFlow(a, button) {
+  const p = payablePayment(a);
   if (!p) return false;
-  const created = new Date(a.created_at || Date.now());
-  const { data: s } = await supabase.from('settings').select('payment_hold_minutes').eq('id', 1).single();
-  const expiresAt = new Date(created.getTime() + (s?.payment_hold_minutes || 15) * 60000).toISOString();
-  const result = await processPayment({ paymentId: p.id, method: p.method, amount: p.amount, expiresAt, description: a.service?.name });
-  if (result !== 'redirect') toast(PAYMENT_RESULT_MESSAGES[result] || PAYMENT_RESULT_MESSAGES.pending);
-  return result === 'approved' || result === 'expired';
+  const run = async () => {
+    try {
+      await startCheckout(p.id); // redireciona
+    } catch (err) {
+      toast({ type: 'error', message: checkoutErrorMessage(err) });
+      if (/ALREADY_PAID|PAYMENT_IN_PROCESS/.test(err.message)) location.href = url(`pagamento.html?ref=${p.id}`);
+    }
+  };
+  if (button) await withLoading(button, run, 'Preparando pagamento seguro…');
+  else await run();
+  return true;
 }
 
 /* ------------------------------------------------------------------ avaliar */

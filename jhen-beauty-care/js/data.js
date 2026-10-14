@@ -58,4 +58,5 @@ export const APPOINTMENT_SELECT = `
   client_id, employee_id, service_id, created_at, is_test_data,
   service:services(id, name, duration_minutes, image_url, payment_mode),
   employee:employees(id, display_name),
-  payments(id, amount, kind, method, status, provider, created_at, paid_at, refund_amount)`;
+  payments(id, amount, kind, method, status, provider, provider_payment_id, payment_type, payment_method_id,
+           card_last_four, checkout_expires_at, created_at, paid_at, refund_amount)`;
